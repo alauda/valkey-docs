@@ -1,0 +1,110 @@
+---
+weight: 40
+i18n:
+  title:
+    zh: 访问方式与 TLS
+title: Access and TLS
+---
+
+# Access and TLS
+
+Configure access under `spec.access` on the high-level `Valkey` resource.
+
+## Service types
+
+| `serviceType` | Use |
+| --- | --- |
+| `ClusterIP` | Clients running inside the Kubernetes cluster. This is the default. |
+| `NodePort` | External clients that can reach Kubernetes node addresses. The operator creates per-Pod Services needed for topology announcements. |
+| `LoadBalancer` | External clients through a load-balancer implementation. The operator creates per-Pod Services where direct topology addresses are required. |
+
+For NodePort in 2.0.0, leave `spec.access.ports` unset unless the delivered build
+documents a validated format. Kubernetes then allocates ports. The source
+baseline contains conflicting schema and runtime formats for fixed assignment.
+
+Switch access type with a merge patch:
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"access":{"serviceType":"LoadBalancer"}}}'
+kubectl -n default get service -l buf.red/name=valkey-cluster -w
+```
+
+Wait for all external addresses and the `Valkey` phase to become ready before
+updating clients.
+
+## In-cluster Service names
+
+For Cluster architecture, use the Service with the same name as the `Valkey`
+resource and a Cluster-aware client:
+
+```bash
+valkey-cli -c -h valkey-cluster.default.svc -p 6379 PING
+```
+
+For Failover and Replica architectures, use the read-write or read-only Service:
+
+```bash
+valkey-cli -h rfr-valkey-failover-readwrite.default.svc -p 6379 PING
+valkey-cli -h rfr-valkey-failover-readonly.default.svc -p 6379 GET app:key
+```
+
+The read-write Service selects the current primary. Applications must reconnect
+after failover. The read-only Service selects replicas and can return stale data.
+
+Discover the actual Services instead of constructing names in automation:
+
+```bash
+kubectl -n default get service -l buf.red/name=valkey-failover -o wide
+```
+
+## IP family
+
+Set `spec.access.ipFamilyPrefer` to `IPv4` or `IPv6`. The generated Services use a
+single-stack family policy. Ensure the cluster, nodes, load balancer, DNS, and
+clients support the selected family before changing an existing instance.
+
+## Enable TLS
+
+TLS requires cert-manager and an existing `Issuer` or `ClusterIssuer`. The
+operator creates a cert-manager `Certificate` and stores the issued material in
+`<instance-name>-tls`.
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge -p '
+{
+  "spec": {
+    "access": {
+      "enableTLS": true,
+      "certIssuer": "valkey-ca",
+      "certIssuerType": "ClusterIssuer"
+    }
+  }
+}'
+```
+
+Verify certificate issuance and the rolling update:
+
+```bash
+kubectl -n default get certificate valkey-cluster-cert
+kubectl -n default describe certificate valkey-cluster-cert
+kubectl -n default get secret valkey-cluster-tls
+kubectl -n default get valkey valkey-cluster -w
+```
+
+Use the issued CA with `valkey-cli`:
+
+```bash
+kubectl -n default get secret valkey-cluster-tls \
+  -o jsonpath='{.data.ca\.crt}' | base64 --decode > valkey-ca.crt
+valkey-cli -c --tls --cacert valkey-ca.crt \
+  -h valkey-cluster.default.svc -p 6379 PING
+```
+
+Protect the extracted CA file and remove it when it is no longer needed. For ACL
+authentication, add `--user <username> --askpass`.
+
+For end-to-end endpoint discovery, authentication, TLS, and client behavior, see:
+
+- [Connect to Failover and Replica instances](../how_to/access/10-failover.mdx)
+- [Connect to a Cluster instance](../how_to/access/20-cluster.mdx)

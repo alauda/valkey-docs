@@ -1,0 +1,114 @@
+---
+weight: 20
+i18n:
+  title:
+    zh: 连接 Cluster 实例
+title: Connect to a Cluster instance
+---
+
+# Connect to a Cluster instance
+
+A Valkey Cluster partitions keys across 16,384 hash slots. The client must
+discover topology and follow `MOVED` and `ASK` redirections. A non-Cluster-aware
+client can connect to one node but fails when a command belongs to another node.
+
+For protocol-level behavior, see the official
+[Valkey Cluster specification](https://valkey.io/topics/cluster-spec/).
+
+## Discover Services and nodes
+
+```bash
+kubectl -n default get valkey valkey-cluster -o wide
+kubectl -n default get service -l buf.red/name=valkey-cluster -o wide
+kubectl -n default get valkey valkey-cluster \
+  -o jsonpath='{range .status.nodes[*]}{.podName}{"\t"}{.role}{"\t"}{.ip}{":"}{.port}{"\t"}{.slots}{"\n"}{end}'
+```
+
+For `ClusterIP`, the Service with the same name as the `Valkey` resource is a
+bootstrap endpoint. The client obtains topology from the server and then opens
+connections to the advertised node addresses.
+
+## Connect with valkey-cli
+
+Use `-c` to follow Cluster redirections:
+
+```bash
+valkey-cli -c -h valkey-cluster.default.svc -p 6379 PING
+```
+
+With ACL authentication:
+
+```bash
+valkey-cli -c -h valkey-cluster.default.svc -p 6379 \
+  --user app --askpass PING
+```
+
+Test a disposable key:
+
+```bash
+valkey-cli -c -h valkey-cluster.default.svc -p 6379 \
+  --user app --askpass SET connectivity:{test} ok EX 60
+valkey-cli -c -h valkey-cluster.default.svc -p 6379 \
+  --user app --askpass GET connectivity:{test}
+```
+
+Curly braces define a hash tag. Keys with the same non-empty text inside braces
+map to the same slot, which is required for multi-key commands that operate on a
+single Cluster slot.
+
+## Verify topology
+
+Run health commands from a ready data Pod or an authenticated client endpoint:
+
+```bash
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER NODES
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER SLOTS
+```
+
+Confirm `cluster_state:ok`, full slot assignment, expected primary and replica
+counts, and reachable advertised addresses.
+
+## Use TLS
+
+```bash
+valkey-cli -c --tls --cacert valkey-ca.crt \
+  -h valkey-cluster.default.svc -p 6379 \
+  --user app --askpass PING
+```
+
+Every advertised node hostname or address followed by the client must be
+reachable and valid for the issued certificate. Test redirections, not only the
+bootstrap connection.
+
+## External access
+
+Cluster external access creates per-Pod Services so the advertised topology can
+route clients directly to the correct node. Discover all generated Services:
+
+```bash
+kubectl -n default get service -l buf.red/name=valkey-cluster -o wide
+```
+
+For `LoadBalancer`, wait until every required per-Pod Service has an ingress
+address. For `NodePort`, ensure the client can reach the selected node addresses
+and all allocated ports. A single reachable bootstrap endpoint is insufficient
+if redirected node endpoints are blocked.
+
+Leave `spec.access.ports` unset for 2.0.0 unless the delivered build documents a
+validated fixed-port format. Kubernetes then allocates NodePorts.
+
+## Application-client requirements
+
+- Configure more than one bootstrap endpoint when the client library supports
+  it.
+- Enable topology refresh and `MOVED`/`ASK` handling.
+- Use bounded connection, command, and retry timeouts.
+- Confirm DNS, routes, firewall rules, TLS names, and network policies for every
+  advertised node.
+- Keep multi-key operations within one hash slot or redesign the operation.
+- Revalidate topology behavior after scaling, failover, access changes, or
+  certificate rotation.

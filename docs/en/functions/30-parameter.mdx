@@ -1,0 +1,128 @@
+---
+weight: 30
+i18n:
+  title:
+    zh: 配置参数
+title: Configure Valkey parameters
+---
+
+# Configure Valkey parameters
+
+Set Valkey server directives as string values in `spec.customConfigs`. The
+operator renders the configuration, compares it with the last applied version,
+and either applies `CONFIG SET` to ready nodes or triggers a rolling restart.
+
+## Before changing parameters
+
+1. Record the current `Valkey` specification and effective values from every
+   architecture role that can differ.
+2. Verify that the directive exists in the target Valkey line and accepts the
+   intended value type and unit.
+3. Determine whether the change affects memory, persistence, networking, client
+   timeouts, or data durability.
+4. Apply one coherent parameter change at a time and wait for `Ready`.
+5. Complete external data protection before a restart-required or persistence
+   change.
+
+## Apply a hot configuration change
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge -p '
+{
+  "spec": {
+    "customConfigs": {
+      "maxmemory-policy": "allkeys-lfu",
+      "timeout": "120",
+      "tcp-keepalive": "300"
+    }
+  }
+}'
+kubectl -n default get valkey valkey-cluster -w
+```
+
+Parameters not listed as forbidden or restart-required are attempted as hot
+updates. A directive can still fail if the selected Valkey version does not allow
+runtime modification. Check `.status.message`, Events, and server logs.
+
+To remove one map key without replacing the other custom configuration, use a
+JSON merge patch with a null value:
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"customConfigs":{"timeout":null}}}'
+```
+
+## Restart-required parameters
+
+Changing any of these directives triggers a rolling restart:
+
+- `tcp-backlog`
+- `databases`
+- `rename-command`
+- `rdbchecksum`
+- `io-threads`
+- `io-threads-do-reads`
+- `loadmodule`
+
+Plan the availability impact and wait for the instance to return to `Ready`.
+
+## Operator-owned or forbidden parameters
+
+The operator filters these directives because it owns networking, TLS, process,
+storage paths, replication, Cluster membership, or ACL configuration:
+
+```text
+include, bind, protected-mode, port, tls-port, tls-cert-file,
+tls-key-file, tls-ca-cert-file, tls-ca-cert-dir, unixsocket,
+unixsocketperm, daemonize, supervised, pidfile, logfile,
+syslog-enabled, syslog-ident, syslog-facility, always-show-logo,
+dbfilename, appendfilename, dir, slaveof, replicaof, gopher-enabled,
+aclfile, requirepass, masterauth, masteruser, slave-announce-ip,
+replica-announce-ip, slave-announce-port, replica-announce-port,
+cluster-enabled, cluster-config-file
+```
+
+Use `spec.access`, `spec.storage`, `User`, and the topology fields instead of
+setting their generated directives directly.
+
+## Configure Sentinel monitoring
+
+For Failover architecture, the supported high-level monitor settings are
+`down-after-milliseconds`, `failover-timeout`, and `parallel-syncs`:
+
+```bash
+kubectl -n default patch valkey valkey-failover --type=merge -p '
+{
+  "spec": {
+    "sentinel": {
+      "monitorConfig": {
+        "down-after-milliseconds": "30000",
+        "failover-timeout": "180000",
+        "parallel-syncs": "1"
+      }
+    }
+  }
+}'
+```
+
+These values affect failure detection and recovery behavior. Validate them
+against network latency, Pod restart time, quorum, and application retry policy;
+do not lower timers solely to make a test failover appear faster.
+
+## Verify the effective configuration
+
+Select a ready data Pod and query the intended keys:
+
+```bash
+kubectl -n default get pods -l buf.red/name=valkey-cluster
+kubectl -n default exec <pod-name> -c valkey -- \
+  valkey-cli CONFIG GET maxmemory-policy timeout tcp-keepalive
+```
+
+If ACL authentication is enabled, use `--user <username> --askpass`. With TLS,
+run the CLI from a location where the issued certificates are available and add
+the TLS options described in [Access and TLS](./40-accessmethod.mdx).
+
+Removing a map entry does not prove that a runtime value returned to its upstream
+default. Query the effective configuration after every deletion and restart the
+instance if the operational result is ambiguous.

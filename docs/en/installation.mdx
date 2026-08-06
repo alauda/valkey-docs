@@ -1,0 +1,117 @@
+---
+weight: 15
+i18n:
+  title:
+    zh: 安装与验证
+title: Install and verify
+---
+
+# Install and verify
+
+Install the Alauda Build of Valkey 2.0.0 product package with the CLI-based
+installation workflow provided for your Alauda Container Platform environment.
+The exact registry, namespace, and package command are distribution-specific and
+are not defined by the Valkey Operator repository.
+
+## Prerequisites
+
+- a supported Kubernetes cluster and a `kubectl` context with cluster-admin
+  permissions for installation;
+- access to the Alauda Build of Valkey 2.0.0 images;
+- a default `StorageClass`, or an explicit class for persistent instances;
+- cert-manager for the default webhook-certificate installation path; an
+  `Issuer` or `ClusterIssuer` is also required when instance TLS is enabled;
+- a Prometheus-compatible scraper if Valkey exporter metrics will be collected.
+
+Obtain the release-specific platform compatibility matrix before production
+installation. The documentation baseline does not define the supported Alauda
+Container Platform versions, registry address, package namespace, channel, or
+upgrade approval strategy.
+
+## Preflight checks
+
+Confirm connectivity, permissions, storage, and optional dependencies before
+running the delivered package command:
+
+```bash
+kubectl version
+kubectl auth can-i create customresourcedefinitions.apiextensions.k8s.io
+kubectl auth can-i create validatingwebhookconfigurations.admissionregistration.k8s.io
+kubectl get nodes -o wide
+kubectl get storageclass
+kubectl get crd certificates.cert-manager.io
+```
+
+The default operator chart enables admission webhooks and cert-manager
+integration. A release may instead supply an externally managed webhook
+certificate and CA bundle, but that must be an explicit package configuration;
+do not disable certificate integration without a replacement. Instance TLS still
+uses cert-manager. A missing default StorageClass is acceptable only when every
+persistent instance specifies a valid class.
+
+## Install the product
+
+Use the CLI package installation workflow supplied with the Alauda Build of
+Valkey 2.0.0 release. Record the chosen package version, image registry, target
+namespace, scope, and approval strategy. Do not substitute commands, channels,
+or component names copied from Alauda Cache Service for Redis OSS; the two
+products have different APIs and capability sets.
+
+## Verify the installation
+
+Confirm that the API resources are registered:
+
+```bash
+kubectl api-resources --api-group=rds.valkey.buf.red
+kubectl api-resources --api-group=valkey.buf.red
+```
+
+Expected resources include `valkeys`, `clusters`, `failovers`, `sentinels`, and
+`users`. Confirm that all CRDs are established:
+
+```bash
+kubectl get crd \
+  valkeys.rds.valkey.buf.red \
+  clusters.valkey.buf.red \
+  failovers.valkey.buf.red \
+  sentinels.valkey.buf.red \
+  users.valkey.buf.red
+```
+
+Locate the operator Deployment and verify its availability:
+
+```bash
+kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator
+kubectl get pods -A -l app.kubernetes.io/name=valkey-operator
+```
+
+Confirm that the Deployment reports its desired replicas available and record
+the installed image:
+
+```bash
+kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator \
+  -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,DESIRED:.spec.replicas,AVAILABLE:.status.availableReplicas,IMAGE:.spec.template.spec.containers[*].image'
+```
+
+If validating or mutating webhooks are enabled, verify their configuration and
+the cert-manager certificate used by the webhook:
+
+```bash
+kubectl get validatingwebhookconfiguration,mutatingwebhookconfiguration \
+  | grep valkey
+kubectl get certificate -A | grep valkey
+```
+
+Confirm that the API server can perform admission without a live mutation:
+
+```bash
+kubectl apply --dry-run=server -f valkey-smoke-test.yaml
+```
+
+Use a manifest from [Create an instance](./functions/10-create-instance.mdx) and
+keep the name unique. A server-side dry-run verifies API discovery and admission;
+it does not prove that images, storage, scheduling, Services, certificates, or
+Valkey topology reconcile successfully.
+
+After these checks pass, create a test instance with the
+[Create an instance](./functions/10-create-instance.mdx) guide.

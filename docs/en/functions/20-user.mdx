@@ -1,0 +1,162 @@
+---
+weight: 20
+i18n:
+  title:
+    zh: ACL 用户
+title: Manage ACL users
+---
+
+# Manage ACL users
+
+Valkey ACL users are represented by `User` resources in
+`valkey.buf.red/v1alpha1`. Each custom user references one or more Kubernetes
+Secrets in the same namespace as the instance.
+
+## Requirements
+
+- Create the `Valkey` instance before the `User` resource.
+- A password must be 8–32 characters and stored under the Secret key `password`.
+- Usernames must contain only letters, digits, and hyphens, with a maximum length
+  of 31 characters.
+- Custom users cannot receive the `ACL` command. The webhook removes or denies
+  ACL-management permission to prevent privilege escalation.
+
+The operator also maintains `default` and `operator` accounts for an instance.
+The `operator` account is reserved for reconciliation and must not be used by
+applications or modified manually.
+
+## List users
+
+The mutating webhook labels `User` resources with the owning instance name:
+
+```bash
+kubectl -n default get user -l buf.red/name=valkey-cluster
+kubectl -n default get user -l buf.red/name=valkey-cluster \
+  -o custom-columns='RESOURCE:.metadata.name,TYPE:.spec.accountType,USERNAME:.spec.username,PHASE:.status.phase,MESSAGE:.status.message'
+```
+
+`Ready` means the controller has applied the account to the ready Valkey nodes.
+`Pending` means reconciliation is still in progress or the instance is not
+ready. `Fail` requires inspection of `.status.message`, Events, and node logs.
+
+## Create a password Secret
+
+Prepare a local file containing only the password, restrict its permissions, and
+create the Secret without placing the password in the manifest:
+
+```bash
+chmod 600 /secure/path/app-password
+kubectl -n default create secret generic valkey-app-password \
+  --from-file=password=/secure/path/app-password
+```
+
+## Create a user
+
+Set `arch` to the owning instance's architecture and `instanceName` to its name:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: valkey.buf.red/v1alpha1
+kind: User
+metadata:
+  name: valkey-app
+  namespace: default
+spec:
+  accountType: custom
+  arch: cluster
+  username: app
+  passwordSecrets:
+    - valkey-app-password
+  aclRules: "+@read +@write -@dangerous ~app:* &app:*"
+  instanceName: valkey-cluster
+EOF
+```
+
+Verify reconciliation:
+
+```bash
+kubectl -n default get user valkey-app
+kubectl -n default get user valkey-app -o jsonpath='{.status.phase}{"\n"}'
+kubectl -n default describe user valkey-app
+```
+
+The expected phase is `Ready`. `Pending` means the controller is still applying
+the account, and `Fail` requires inspection of `.status.message` and Events.
+
+Inspect the canonical ACL rule written by the webhook:
+
+```bash
+kubectl -n default get user valkey-app \
+  -o jsonpath='{.spec.aclRules}{"\n"}{.status.aclRules}{"\n"}'
+```
+
+## Test authentication
+
+Use interactive password input so the password is not placed in the command line
+or an environment variable:
+
+```bash
+valkey-cli -h <service-host> -p 6379 --user app --askpass PING
+```
+
+For Cluster architecture, add `-c` so the client follows slot redirections:
+
+```bash
+valkey-cli -c -h <service-host> -p 6379 --user app --askpass PING
+```
+
+## Rotate a password
+
+1. Create a second Secret with the new password.
+2. Add the new Secret to `spec.passwordSecrets` while retaining the old Secret.
+3. Wait for the `User` phase to return to `Ready` and update clients.
+4. Remove the old Secret name from `spec.passwordSecrets`.
+5. Wait for `Ready`, test the new password, and then delete the old Secret.
+
+Edit the resource with:
+
+```bash
+kubectl -n default edit user valkey-app
+```
+
+The multi-Secret transition prevents an immediate cutover from breaking all
+clients.
+
+## Change permissions
+
+Apply the least privilege needed by the application. This example replaces the
+rule with read and write access limited to `app:*` keys and channels:
+
+```bash
+kubectl -n default patch user valkey-app --type=merge \
+  -p '{"spec":{"aclRules":"+@read +@write -@dangerous ~app:* &app:*"}}'
+kubectl -n default get user valkey-app -w
+```
+
+Wait for `Ready`, test both an allowed and a denied operation, and inspect the
+canonical status rule. Do not grant `+@all`, `+@admin`, or another category that
+implicitly enables the `ACL` command unless the rule also explicitly removes
+that command and the webhook accepts the result.
+
+## Delete a custom user
+
+```bash
+kubectl -n default delete user valkey-app
+```
+
+The operator removes the account from ready Valkey nodes. The built-in `default`
+and `operator` users cannot be deleted while their instance exists.
+
+## Failure handling
+
+```bash
+kubectl -n default describe user valkey-app
+kubectl -n default get events --sort-by=.lastTimestamp
+kubectl -n default get secret valkey-app-password \
+  -o go-template='{{.metadata.name}}{{"\t"}}{{if index .data "password"}}password key present{{else}}password key missing{{end}}{{"\n"}}'
+```
+
+The last command checks only whether the key exists and does not print its value.
+Do not print, decode, log, or attach Secret data to a support case. If a user
+remains `Fail`, collect the `User` resource with Secret values omitted, the owning
+`Valkey` status, Events, and relevant operator logs.

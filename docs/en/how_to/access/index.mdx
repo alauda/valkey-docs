@@ -1,0 +1,23 @@
+---
+weight: 10
+i18n:
+  title:
+    zh: 客户端连接
+title: Client connections
+---
+
+# Client connections
+
+Use the endpoint that matches the instance architecture. Discover Services with
+`kubectl`; do not hard-code generated per-Pod endpoints in automation.
+
+| Architecture | Write endpoint | Client requirement |
+| --- | --- | --- |
+| Cluster | Instance or per-Pod Service | Cluster-aware client that follows `MOVED` and `ASK` redirections. |
+| Failover | `rfr-<name>-readwrite` | Reconnect and retry when the selected primary changes. |
+| Replica | `rfr-<name>-readwrite` | Same direct primary endpoint, but no Sentinel-managed failover. |
+
+Read-only Services select replica Pods and can return stale data. Do not use them
+for read-after-write consistency or writes.
+
+<Overview />

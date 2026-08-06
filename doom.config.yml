@@ -1,0 +1,8 @@
+title: Alauda Build of Valkey
+logoText: Alauda Build of Valkey
+lang: en
+api:
+  crds:
+    - docs/shared/crds/*.yaml
+internalRoutes:
+  - agent/**/*

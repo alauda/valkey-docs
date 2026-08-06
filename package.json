@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "@alauda/doom": "1.12.1",
+    "typescript": "^5.9.2"
+  },
+  "scripts": {
+    "dev": "doom dev",
+    "build": "doom --ignore=true build",
+    "lint": "doom lint",
+    "serve": "doom --ignore=true serve",
+    "translate": "doom translate"
+  },
+  "packageManager": "yarn@4.9.4"
+}

@@ -1,0 +1,64 @@
+---
+weight: 30
+i18n:
+  title:
+    zh: 当前限制
+title: Current limitations
+---
+
+# Current limitations
+
+The following boundaries apply to the 2.0.0 documentation baseline.
+
+## Management interface
+
+There is no Web Console. All operations require CLI tools or Kubernetes API
+automation.
+
+## Server versions
+
+Only Valkey 7.2, 8.1, and 9.1 are supported. An installed custom resource
+definition (CRD) may still accept `8.0` or `9.0` for compatibility with upstream
+API history, but the 2.0.0 product package does not provide those server image
+lines.
+
+## Backup, restore, and disaster recovery
+
+The Valkey Operator does not support backup, restore, or disaster recovery. It
+does not provide a backup resource, restore workflow, scheduled backup controller,
+cross-cluster replication, cross-cluster failover, or disaster-recovery API.
+High availability within one Kubernetes cluster is not backup or disaster
+recovery. No disaster-recovery procedure is included in this product documentation.
+
+## Fixed NodePort assignment
+
+`spec.access.ports` exists in the API, but the inspected 2.0.0 source has
+incompatible formats in the generated CRD schema and the runtime parser. Leave the
+field unset so Kubernetes allocates NodePorts unless your delivered build provides
+a documented and validated format.
+
+## Persistent volume retention
+
+Do not rely on `spec.storage.retainAfterDeleted` without validating the behavior
+of the delivered build and its StatefulSet persistent volume claim (PVC)
+retention policy. Before deleting an instance, list its PVCs and protect or copy
+required data explicitly.
+
+## Monitoring integration
+
+The Valkey exporter sidecar and metrics Services are implemented. The operator's
+shipped `ServiceMonitor` selects operator metrics, not Valkey data-plane metrics.
+Create the data-plane scrape configuration required by your monitoring stack.
+
+## Features not implemented by the operator
+
+- integrated large-key inspection and report export;
+- parameter templates;
+- integrated log viewer;
+- automatic cross-cluster replication or failover;
+- an operator-managed backup repository or restore job.
+
+The absence of an integrated large-key report does not prevent a controlled
+manual investigation with `valkey-cli`. See
+[Analyze large keys with valkey-cli](./trouble_shooting/20-large-key-analysis.mdx)
+for the operational impact and Cluster coverage requirements.

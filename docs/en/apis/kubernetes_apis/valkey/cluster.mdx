@@ -1,0 +1,16 @@
+---
+weight: 30
+i18n:
+  title:
+    en: Cluster
+---
+
+# Cluster
+
+{/* cspell:ignore valkey */}
+
+`Cluster` is the low-level sharded topology API. A high-level `Valkey` with
+`spec.arch: cluster` creates and owns this resource. Inspect it for diagnostics;
+apply product-level changes to `Valkey`.
+
+<K8sCrd name="clusters.valkey.buf.red" />

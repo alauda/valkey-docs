@@ -1,0 +1,86 @@
+---
+weight: 30
+i18n:
+  title:
+    zh: 升级 Valkey
+title: Upgrade Valkey
+---
+
+# Upgrade Valkey
+
+Upgrade by increasing `spec.version` on the owning `Valkey` resource. The
+validating webhook rejects version downgrades.
+
+The 2.0.0 product supports Valkey 7.2, 8.1, and 9.1. Use one supported line at a
+time (`7.2` → `8.1` → `9.1`) unless the delivered release notes explicitly
+validate a skipped-version path.
+
+## Before you begin
+
+1. Confirm the instance is `Ready` and no scale, restart, access, certificate,
+   scheduling, or configuration change is running.
+2. Complete and verify an external backup or export. The operator has no
+   integrated backup or rollback controller.
+3. Check application and module compatibility with the target Valkey line.
+4. Review `spec.customConfigs` for directives removed or changed by the target
+   version.
+5. Confirm enough schedulable capacity for rolling Pod replacement.
+
+Record the current state:
+
+```bash
+kubectl -n default get valkey valkey-cluster -o yaml > valkey-before-upgrade.yaml
+kubectl -n default get pods,pvc,service -l buf.red/name=valkey-cluster -o wide
+kubectl -n default get events --sort-by=.lastTimestamp
+```
+
+For Cluster architecture, also verify slot and membership health from a ready Pod:
+
+```bash
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER NODES
+```
+
+## Apply the upgrade
+
+Example: upgrade from 7.2 to 8.1.
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"version":"8.1"}}'
+```
+
+Watch the high-level resource, Pods, and Events:
+
+```bash
+kubectl -n default get valkey valkey-cluster -w
+kubectl -n default get pods -l buf.red/name=valkey-cluster -w
+kubectl -n default get events --sort-by=.lastTimestamp
+```
+
+Do not apply another change while Pods are being replaced or the phase is not
+`Ready`.
+
+## Verify the result
+
+Confirm the desired and observed version and inspect every server Pod:
+
+```bash
+kubectl -n default get valkey valkey-cluster \
+  -o jsonpath='{.spec.version}{"\t"}{.status.lastVersion}{"\t"}{.status.phase}{"\n"}'
+kubectl -n default get pods -l buf.red/name=valkey-cluster \
+  -o custom-columns='NAME:.metadata.name,IMAGE:.spec.containers[?(@.name=="valkey")].image,READY:.status.containerStatuses[?(@.name=="valkey")].ready'
+kubectl -n default exec <ready-pod> -c valkey -- valkey-cli INFO server
+```
+
+Then verify application reads and writes, ACL authentication, replication or
+Cluster slot coverage, failover discovery where applicable, and exporter metrics.
+
+## Failure boundary
+
+Do not patch `spec.version` back to the previous value; downgrade is rejected and
+can be unsafe for persisted data. Preserve logs and Events, stop further changes,
+and follow the product support recovery plan. A downgrade requires a separately
+created compatible instance and a validated data migration or restore process.

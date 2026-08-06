@@ -1,0 +1,219 @@
+---
+weight: 10
+i18n:
+  title:
+    zh: 创建实例
+title: Create an instance
+---
+
+# Create an instance
+
+Use the high-level `Valkey` custom resource for application instances. The next
+major release, 2.0.0, supports only `7.2`, `8.1`, and `9.1` in `spec.version`.
+
+## Before you begin
+
+- Choose `cluster`, `failover`, or `replica` architecture.
+- Set CPU and memory requests and limits. Equal request and limit values avoid a
+  validating-webhook warning and provide predictable memory behavior.
+- Configure persistent storage for data that must survive Pod recreation.
+- Use at least two members per shard for primary-replica redundancy.
+
+## Choose the main fields
+
+| Field | Required decision |
+| --- | --- |
+| `spec.version` | Use only `7.2`, `8.1`, or `9.1` for product 2.0.0. |
+| `spec.arch` | Select `cluster`, `failover`, or `replica`; do not plan an in-place architecture conversion. |
+| `spec.replicas.shards` | Use 3–128 for Cluster and exactly 1 for Failover or Replica. |
+| `spec.replicas.replicasOfShard` | Total data-member count: 1–5. Use at least 2 for primary-replica redundancy. |
+| `spec.resources` | Set CPU and memory requests and limits; equal values avoid a webhook warning. |
+| `spec.storage` | Omit for ephemeral storage, or select capacity, StorageClass, and access mode. |
+| `spec.access` | Select ClusterIP, NodePort, or LoadBalancer and the IP family; optionally enable TLS. |
+| `spec.affinityPolicy` | Choose a policy that the available node count can satisfy. |
+| `spec.customConfigs` | Set only directives that the operator does not own or forbid. |
+| `spec.exporter` | Enabled by default; size the sidecar or explicitly disable it. |
+
+If `storageClassName` is specified without `capacity`, the webhook derives a
+capacity equal to twice the data-container memory limit. Set capacity explicitly
+for predictable storage planning.
+
+## Create a Cluster instance
+
+This example creates three shards with two members in each shard:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: rds.valkey.buf.red/v1alpha1
+kind: Valkey
+metadata:
+  name: valkey-cluster
+  namespace: default
+spec:
+  version: "8.1"
+  arch: cluster
+  replicas:
+    shards: 3
+    replicasOfShard: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  storage:
+    storageClassName: standard
+    capacity: 10Gi
+    accessMode: ReadWriteOnce
+  access:
+    serviceType: ClusterIP
+  exporter:
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "128Mi"
+      limits:
+        cpu: "100m"
+        memory: "384Mi"
+  affinityPolicy: AntiAffinityInShard
+  customConfigs:
+    maxmemory-policy: allkeys-lru
+    appendonly: "yes"
+EOF
+```
+
+## Create a Failover instance
+
+This example creates two data members and three Sentinels:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: rds.valkey.buf.red/v1alpha1
+kind: Valkey
+metadata:
+  name: valkey-failover
+  namespace: default
+spec:
+  version: "8.1"
+  arch: failover
+  replicas:
+    shards: 1
+    replicasOfShard: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  storage:
+    storageClassName: standard
+    capacity: 10Gi
+    accessMode: ReadWriteOnce
+  access:
+    serviceType: ClusterIP
+  sentinel:
+    replicas: 3
+    quorum: 2
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "256Mi"
+      limits:
+        cpu: "200m"
+        memory: "256Mi"
+    monitorConfig:
+      down-after-milliseconds: "30000"
+      failover-timeout: "180000"
+      parallel-syncs: "1"
+  customConfigs:
+    maxmemory-policy: allkeys-lru
+    appendonly: "yes"
+EOF
+```
+
+## Create a Replica instance
+
+This example creates one primary and one replica without Sentinel:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: rds.valkey.buf.red/v1alpha1
+kind: Valkey
+metadata:
+  name: valkey-replica
+  namespace: default
+spec:
+  version: "8.1"
+  arch: replica
+  replicas:
+    shards: 1
+    replicasOfShard: 2
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  storage:
+    storageClassName: standard
+    capacity: 10Gi
+    accessMode: ReadWriteOnce
+  access:
+    serviceType: ClusterIP
+  customConfigs:
+    maxmemory-policy: allkeys-lru
+    appendonly: "yes"
+EOF
+```
+
+Set `replicasOfShard: 1` only when you intentionally want a single data node and
+accept the lack of primary-replica redundancy.
+
+## Verify the instance
+
+Watch the high-level status until `PHASE` becomes `Ready`:
+
+```bash
+kubectl -n default get valkey -w
+```
+
+Then inspect the observed nodes, child resources, Pods, Services, and PVCs:
+
+```bash
+kubectl -n default get valkey valkey-cluster -o yaml
+kubectl -n default get cluster,failover,sentinel
+kubectl -n default get pods,service,pvc -l buf.red/name=valkey-cluster
+kubectl -n default describe valkey valkey-cluster
+```
+
+If reconciliation fails, read `.status.message`, namespace Events, and the
+operator logs before changing the manifest.
+
+The main `kubectl get valkey` columns are:
+
+| Column | Meaning |
+| --- | --- |
+| `ARCH` | Desired architecture from `spec.arch`. |
+| `VERSION` | Desired server line from `spec.version`. |
+| `ACCESS` | Service type from `spec.access.serviceType`. |
+| `STORAGE CLASS` | Requested persistent StorageClass, when configured. |
+| `STATUS` | High-level reconciliation phase. |
+| `MESSAGE` | Current diagnostic or operation detail. |
+
+After `Ready`, verify the architecture rather than relying only on the phase:
+
+```bash
+# Cluster
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+
+# Failover or Replica
+kubectl -n default exec <ready-data-pod> -c valkey -- \
+  valkey-cli INFO replication
+```
+
+For an explicit initial Cluster slot layout, use
+[Initialize Cluster slot distribution](../how_to/40-cluster-slots-distribution.mdx).

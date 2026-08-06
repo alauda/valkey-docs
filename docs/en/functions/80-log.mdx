@@ -1,0 +1,57 @@
+---
+weight: 80
+i18n:
+  title:
+    zh: 日志与事件
+title: Inspect logs and Events
+---
+
+# Inspect logs and Events
+
+There is no integrated log viewer. Use Kubernetes CLI commands.
+
+## Instance status and Events
+
+```bash
+kubectl -n <namespace> describe valkey <name>
+kubectl -n <namespace> get events --sort-by=.lastTimestamp
+kubectl -n <namespace> get pods -l buf.red/name=<name> -o wide
+```
+
+Start with `.status.message` and warning Events. They usually identify admission,
+scheduling, certificate, Service, storage, or reconciliation failures before
+container logs are needed.
+
+## Data Pod logs
+
+```bash
+kubectl -n <namespace> logs <pod-name> -c valkey --tail=200
+kubectl -n <namespace> logs <pod-name> -c valkey --previous --tail=200
+kubectl -n <namespace> logs <pod-name> -c exporter --tail=200
+```
+
+Use `--previous` after a container restart. For an active incident, add `--follow`
+and a bounded `--since` value rather than downloading an unbounded log.
+
+## Sentinel logs
+
+Discover Sentinel Pods and inspect the `sentinel` container:
+
+```bash
+kubectl -n <namespace> get pods -l buf.red/name=<name>
+kubectl -n <namespace> logs <sentinel-pod> -c sentinel --tail=200
+```
+
+## Operator logs
+
+Locate the operator Deployment instead of assuming its namespace:
+
+```bash
+kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator
+kubectl -n <operator-namespace> logs deployment/<operator-deployment> \
+  --all-containers --since=30m
+```
+
+When opening a support case, include the `Valkey` YAML with Secret data removed,
+related Events, Pod states, relevant container logs, operator logs, and the exact
+time range. Never include Secret values or generated TLS private keys.

@@ -1,0 +1,21 @@
+project_name: "Alauda Build of Valkey Documentation"
+summary: "CLI-focused documentation for deploying and operating Valkey on Kubernetes."
+body: |
+  This index covers user-facing documentation under docs/en/ for installing,
+  configuring, accessing, scaling, upgrading, monitoring, and troubleshooting
+  Valkey instances through Kubernetes APIs and CLI tools.
+include_patterns:
+  - "**/*.md"
+  - "**/*.mdx"
+exclude_patterns:
+  - "**/node_modules/**"
+  - "**/.git/**"
+  - "**/.llmstxt-cache/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/llms.txt"
+  - "README.md"
+  - "**/.DS_Store"
+grouping_base_path: "docs/en"
+batch_size: 15
+description_max_words: 150

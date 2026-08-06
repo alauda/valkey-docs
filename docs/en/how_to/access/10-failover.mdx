@@ -1,0 +1,118 @@
+---
+weight: 10
+i18n:
+  title:
+    zh: 连接 Failover 或 Replica 实例
+title: Connect to Failover and Replica instances
+---
+
+# Connect to Failover and Replica instances
+
+Failover and Replica architectures expose role-selecting Services. The
+read-write Service selects the current primary and the read-only Service selects
+replicas.
+
+Failover additionally deploys or references Valkey Sentinel. Replica architecture
+does not deploy Sentinel; applications use the same read-write Service but must
+not assume Sentinel-based automatic failover.
+
+## Discover endpoints
+
+```bash
+kubectl -n default get valkey valkey-failover -o wide
+kubectl -n default get service -l buf.red/name=valkey-failover -o wide
+kubectl -n default get endpointslice \
+  -l kubernetes.io/service-name=rfr-valkey-failover-readwrite
+kubectl -n default get endpointslice \
+  -l kubernetes.io/service-name=rfr-valkey-failover-readonly
+```
+
+For in-cluster clients, the stable DNS names are:
+
+```text
+rfr-valkey-failover-readwrite.default.svc:6379
+rfr-valkey-failover-readonly.default.svc:6379
+```
+
+Replace the instance name and namespace for your environment. Discover the
+actual Service names rather than constructing them in production automation.
+
+## Test the write endpoint
+
+Without ACL authentication:
+
+```bash
+valkey-cli -h rfr-valkey-failover-readwrite.default.svc -p 6379 PING
+```
+
+With a custom ACL user, request the password interactively:
+
+```bash
+valkey-cli -h rfr-valkey-failover-readwrite.default.svc -p 6379 \
+  --user app --askpass PING
+```
+
+Test a write only with a disposable key approved for the environment:
+
+```bash
+valkey-cli -h rfr-valkey-failover-readwrite.default.svc -p 6379 \
+  --user app --askpass SET connectivity:test ok EX 60
+valkey-cli -h rfr-valkey-failover-readwrite.default.svc -p 6379 \
+  --user app --askpass GET connectivity:test
+```
+
+## Test the read-only endpoint
+
+```bash
+valkey-cli -h rfr-valkey-failover-readonly.default.svc -p 6379 \
+  --user app --askpass GET connectivity:test
+```
+
+The read-only Service can have no endpoints when no replica is ready. Replication
+is asynchronous, so a replica can briefly return an older value.
+
+## Use TLS
+
+When `spec.access.enableTLS` is true, obtain the trusted CA through the approved
+certificate-distribution process and add TLS options:
+
+```bash
+valkey-cli --tls --cacert valkey-ca.crt \
+  -h rfr-valkey-failover-readwrite.default.svc -p 6379 \
+  --user app --askpass PING
+```
+
+The certificate must be valid for the hostname used by the client. Do not use
+`--insecure` as a normal connection method.
+
+## External access
+
+For `LoadBalancer`, inspect the role-selecting Service and wait for an ingress
+address:
+
+```bash
+kubectl -n default get service rfr-valkey-failover-readwrite -w
+kubectl -n default get service rfr-valkey-failover-readwrite -o yaml
+```
+
+For `NodePort`, obtain the allocated port and a reachable Kubernetes node
+address. Firewall rules and routing must permit the connection:
+
+```bash
+kubectl -n default get service rfr-valkey-failover-readwrite \
+  -o jsonpath='{.spec.ports[0].nodePort}{"\n"}'
+kubectl get nodes -o wide
+```
+
+Do not publish a fixed `spec.access.ports` example for 2.0.0: the inspected CRD
+schema and runtime parser use incompatible formats. Leave the field unset unless
+the delivered build documents a validated format.
+
+## Client behavior
+
+- Use the read-write endpoint for writes and consistency-sensitive reads.
+- Configure bounded connection, command, and retry timeouts.
+- Re-resolve DNS and reconnect after a primary transition.
+- Retry only operations that are safe for the application's idempotency model.
+- Monitor replica health before sending production reads to the read-only
+  endpoint.

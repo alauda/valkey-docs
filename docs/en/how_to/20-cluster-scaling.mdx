@@ -1,0 +1,123 @@
+---
+weight: 20
+i18n:
+  title:
+    zh: Cluster 分片扩缩容
+title: Scale Cluster shards
+---
+
+# Scale Cluster shards
+
+Change `spec.replicas.shards` on the owning `Valkey` resource to add or remove
+Cluster shards. The supported range is 3–128. The operator creates or removes
+shard workloads and rebalances the 16,384 hash slots.
+
+This procedure is specific to `spec.arch: cluster`. For Failover or Replica
+member changes, use [Update and scale](../functions/50-update.mdx).
+
+## Before you begin
+
+- Confirm that the high-level resource is `Ready` and the Cluster reports all
+  slots assigned.
+- Do not combine shard scaling with a server upgrade, rolling restart, storage,
+  access, scheduling, TLS, or configuration change.
+- Confirm that Cluster-aware clients follow `MOVED` and `ASK` redirections.
+- Schedule the operation during lower traffic. Rebalancing consumes CPU, memory,
+  and network bandwidth and can increase request latency.
+- For scale-up, ensure capacity for every new shard member and its PVC.
+- For scale-down, ensure the remaining shards can hold the migrated dataset plus
+  normal runtime overhead. The operator does not perform external capacity
+  planning or create a backup.
+
+Record the baseline:
+
+```bash
+kubectl -n default get valkey valkey-cluster -o yaml > valkey-before-scaling.yaml
+kubectl -n default get pods,pvc,service -l buf.red/name=valkey-cluster -o wide
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER NODES
+```
+
+If ACL authentication is required, add `--user <username> --askpass` and allocate
+a terminal with `kubectl exec -it`.
+
+## Scale up
+
+This example increases the Cluster from three to four shards and retains two
+members per shard:
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"replicas":{"shards":4,"replicasOfShard":2}}}'
+```
+
+The `replicasOfShard` value is the total number of members in a shard, including
+the primary. Retain the existing value unless the same maintenance operation is
+intentionally changing redundancy and capacity.
+
+## Scale down
+
+Before removing a shard, compare dataset size and free memory across all primary
+nodes. Do not use a fixed memory coefficient copied from another product; the
+required margin depends on workload, persistence, fragmentation, client buffers,
+modules, and the target Valkey line.
+
+This example reduces a four-shard Cluster to three shards:
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"replicas":{"shards":3,"replicasOfShard":2}}}'
+```
+
+The operator must migrate slots away from the removed shard before deleting its
+workload. Do not delete StatefulSets, Pods, or PVCs manually to accelerate the
+operation.
+
+## Monitor progress
+
+Watch the high-level phase, message, nodes, child Cluster status, Pods, and
+Events:
+
+```bash
+kubectl -n default get valkey valkey-cluster -w
+kubectl -n default get valkey valkey-cluster \
+  -o jsonpath='{.status.phase}{"\n"}{.status.message}{"\n"}{range .status.nodes[*]}{.podName}{"\t"}{.role}{"\t"}{.slots}{"\n"}{end}'
+kubectl -n default get cluster valkey-cluster -o yaml
+kubectl -n default get pods -l buf.red/name=valkey-cluster -w
+kubectl -n default get events --sort-by=.lastTimestamp
+```
+
+`Rebalancing` indicates slot movement. `Initializing` can appear while workloads
+are created or removed. Do not submit another topology change until the phase is
+`Ready` and `.status.message` is clear.
+
+## Verify completion
+
+Run the health commands from a ready data Pod:
+
+```bash
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER NODES
+```
+
+Verify all of the following:
+
+- `cluster_state:ok` is reported;
+- all 16,384 slots are assigned with no failed slots;
+- the desired number of shards and members exists;
+- every expected Pod is ready and every required PVC is bound;
+- application reads and writes succeed through a Cluster-aware client;
+- latency, memory, network, and exporter metrics have returned to an acceptable
+  range.
+
+## Failure boundary
+
+Do not immediately patch the old shard count while migration is active. A second
+topology change can make recovery harder. Preserve the `Valkey` and child
+`Cluster` YAML, Events, operator logs, `CLUSTER INFO`, and `CLUSTER NODES` output.
+Correct schedulability, storage, network, or capacity failures first and follow
+the product support recovery plan if reconciliation cannot continue.

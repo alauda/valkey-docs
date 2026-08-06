@@ -1,0 +1,71 @@
+---
+weight: 15
+i18n:
+  title:
+    zh: 删除实例
+title: Delete an instance
+---
+
+# Delete an instance
+
+Deleting a `Valkey` resource removes its operator-managed workloads and Services.
+This operation is destructive and is not a backup workflow.
+
+## Expected impact
+
+| Resource or behavior | Expected result |
+| --- | --- |
+| Data Pods and StatefulSets | Removed by owner references and finalizers. |
+| Cluster, Failover, and Sentinel child CRs | Removed with the owning instance. |
+| Services and generated configuration | Removed when their owner is deleted. |
+| ACL `User` resources | Operator-managed built-ins and owned custom users can be removed. Record required definitions first. |
+| PVCs and underlying volumes | Outcome depends on operator behavior, StatefulSet retention, StorageClass reclaim policy, and the delivered build. Verify explicitly. |
+| External backups or exports | Not managed by the operator and must be handled by their owning system. |
+
+## Before you delete
+
+1. Stop application writes and confirm that clients no longer use the instance.
+2. Complete and verify your external backup or data export.
+3. Record the PVCs and their reclaim policy:
+
+   ```bash
+   kubectl -n <namespace> get pvc -l buf.red/name=<name> -o wide
+   kubectl get storageclass
+   ```
+
+4. Protect any PVC that must be retained. Do not assume that
+   `spec.storage.retainAfterDeleted` alone guarantees retention in every 2.0.0
+   build.
+
+## Delete the instance
+
+```bash
+kubectl -n <namespace> delete valkey <name>
+```
+
+Watch deletion and finalizer processing:
+
+```bash
+kubectl -n <namespace> get valkey <name> -w
+kubectl -n <namespace> get cluster,failover,sentinel,user \
+  -l buf.red/name=<name>
+```
+
+After the `Valkey` resource disappears, inspect remaining PVCs and Secrets before
+deleting them explicitly:
+
+```bash
+kubectl -n <namespace> get pvc,secret -l buf.red/name=<name>
+```
+
+Also confirm that no generated workload or Service remains:
+
+```bash
+kubectl -n <namespace> get cluster,failover,sentinel,user \
+  -l buf.red/name=<name>
+kubectl -n <namespace> get statefulset,pod,service,configmap \
+  -l buf.red/name=<name>
+```
+
+Do not remove operator finalizers to force deletion unless product support has
+confirmed the remaining child resources and data-retention consequences.

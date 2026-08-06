@@ -1,0 +1,71 @@
+---
+weight: 70
+i18n:
+  title:
+    zh: 外部备份与恢复规划
+title: Plan external backup and restore
+---
+
+# Plan external backup and restore
+
+Alauda Build of Valkey 2.0.0 does not provide a backup custom resource,
+scheduled backup controller, backup repository, restore job, or point-in-time
+recovery workflow. Do not copy Redis product backup commands or fields into a
+`Valkey` resource.
+
+Use an independently supported data-protection system and validate its behavior
+with the exact Valkey server line, topology, persistence configuration, dataset,
+and storage environment.
+
+## Required protection scope
+
+| Item | Why it is needed |
+| --- | --- |
+| Valkey data | Reconstructs application state according to the selected backup method. |
+| `Valkey` specification | Recreates topology, resources, access, storage, and configuration intent. |
+| Custom `User` specifications | Recreates ACL rule intent without exposing password data. |
+| Password Secrets | Required for client authentication; protect through an approved secret-management process. |
+| TLS trust and issuer configuration | Required to restore trusted encrypted access. Do not export private keys casually. |
+| StorageClass and infrastructure configuration | Required to provision compatible PVCs and networking. |
+| Product, operator, and server image versions | Required to reproduce a compatible runtime. |
+
+## Record non-secret configuration
+
+```bash
+kubectl get valkey -A -o yaml > valkey-instances.yaml
+kubectl get user -A -o yaml > valkey-users.yaml
+kubectl get storageclass -o yaml > valkey-storageclasses.yaml
+kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator \
+  -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,IMAGE:.spec.template.spec.containers[*].image'
+```
+
+Store these files with access controls. They do not contain password Secret data,
+but metadata, ACL rules, addresses, and infrastructure names can still be
+sensitive.
+
+## Validate an external backup method
+
+The backup owner must define and test:
+
+1. consistency semantics for Cluster, Failover, and Replica architecture;
+2. coverage of every Cluster shard or the selected authoritative data node;
+3. handling of RDB, AOF, modules, encryption, ACLs, and version-specific formats;
+4. application write quiescence or snapshot coordination requirements;
+5. retention, encryption, integrity checks, and restore credentials;
+6. restore into a separate namespace or cluster without overwriting the source;
+7. recovery time and recovery point objectives measured by a full restore test.
+
+Do not treat copying a live PVC, running `SAVE`, or transferring one Cluster
+node's RDB as a generally valid product backup. Suitability depends on topology,
+storage snapshots, write coordination, and the restore implementation.
+
+## Restore boundary
+
+Restore first into a new instance whose server line and modules are compatible
+with the protected data. Keep applications disconnected until topology health,
+slot coverage or replication, ACL authentication, TLS, data integrity, and
+application-level checks pass.
+
+The Valkey Operator can reconcile the new desired Kubernetes topology, but it
+does not orchestrate importing the protected dataset. Follow the external
+backup system's supported restore CLI and product support procedure.

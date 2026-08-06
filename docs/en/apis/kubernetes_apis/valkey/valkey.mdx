@@ -1,0 +1,50 @@
+---
+weight: 10
+i18n:
+  title:
+    en: Valkey
+---
+
+# Valkey
+
+{/* cspell:ignore valkey valkeys */}
+
+`Valkey` is the high-level namespaced API for creating and operating an instance.
+For product 2.0.0, use only `7.2`, `8.1`, or `9.1` in `spec.version`, even though
+the compatibility schema below also lists legacy enum values.
+
+`spec.replicas.replicasOfShard` is implemented as the total member count per
+Cluster shard or the total data-member count for Failover/Replica.
+
+## Main specification fields
+
+| Field | Purpose | 2.0.0 boundary |
+| --- | --- | --- |
+| `spec.version` | Desired server line | Product supports only `7.2`, `8.1`, and `9.1`. |
+| `spec.arch` | Deployment architecture | `cluster`, `failover`, or `replica`. |
+| `spec.replicas` | Shard and member counts; optional initial slot plan | `shardsConfig` is consumed during Cluster initialization. |
+| `spec.resources` | Data-container CPU and memory | CPU and memory are required by the webhook. |
+| `spec.customConfigs` | Valkey configuration directives | Operator-owned directives are filtered; some changes require restart. |
+| `spec.modules` | Startup module path and arguments | The module file must already exist in the delivered server image at the configured path; the operator does not fetch modules or supply a module catalog. |
+| `spec.storage` | PVC capacity, class, access mode, and annotations | Validate retention behavior before deletion. |
+| `spec.access` | Service type, annotations, IP family, fixed ports, and TLS issuer | Leave fixed `ports` unset unless the delivered build resolves the documented format conflict. |
+| `spec.podAnnotations` | Data-workload annotations and lifecycle triggers | Pause and restart use reserved annotation keys documented in the guides. |
+| `spec.affinityPolicy` | Built-in placement policy | Custom affinity also requires `spec.customAffinity`. |
+| `spec.nodeSelector` | Node label selection | Standard Kubernetes selector semantics. |
+| `spec.tolerations` | Pod tolerations | Standard Kubernetes toleration semantics. |
+| `spec.securityContext` | Pod security context | Applied to data workloads. |
+| `spec.exporter` | Exporter enablement and container settings | Enabled unless `disable: true`. |
+| `spec.sentinel` | Failover Sentinel settings or reference | Cleared for Replica architecture; required for Failover after defaulting. |
+
+## Status fields
+
+| Field | Meaning |
+| --- | --- |
+| `status.phase` | `Initializing`, `Rebalancing`, `Ready`, `Failed`, or `Paused`. |
+| `status.message` | Current reconciliation or failure detail. |
+| `status.matchLabels` | Labels that identify managed resources. |
+| `status.nodes` | Observed Pod, role, address, member, and slot information. |
+| `status.lastShardCount` | Last observed Cluster shard count. |
+| `status.lastVersion` | Last observed server line. |
+
+<K8sCrd name="valkeys.rds.valkey.buf.red" />

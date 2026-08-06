@@ -1,0 +1,109 @@
+---
+weight: 20
+i18n:
+  title:
+    zh: 架构
+title: Architecture
+---
+
+# Architecture
+
+Users declare one `Valkey` resource in `rds.valkey.buf.red/v1alpha1`. The Valkey
+Operator translates it into lower-level resources and owns their lifecycle.
+
+| `Valkey.spec.arch` | Operator-managed resource | Main workloads and access Services |
+| --- | --- | --- |
+| `cluster` | `Cluster` | One StatefulSet per shard; an instance Service plus per-Pod Services when external access is enabled. |
+| `failover` | `Failover` and `Sentinel` | A data StatefulSet, Sentinel StatefulSet, read-write Service, read-only Service, and per-Pod Services as required. |
+| `replica` | `Failover` without Sentinel settings | A data StatefulSet, read-write Service, read-only Service, and per-Pod Services as required. |
+
+Do not edit operator-managed `Cluster`, `Failover`, or `Sentinel` resources. Apply
+changes to the owning `Valkey` resource and let the controller propagate them.
+
+## Reconciliation flow
+
+| Layer | Resource | Responsibility |
+| --- | --- | --- |
+| Product API | `Valkey`, `User` | User-declared topology, version, resources, access, configuration, scheduling, and ACL intent. |
+| Topology API | `Cluster`, `Failover`, `Sentinel` | Operator-generated topology state and operation progress. |
+| Kubernetes workload | StatefulSet, Pod, Service, ConfigMap, Secret, PVC, Certificate | Runtime resources generated from the topology. |
+| Data plane | Valkey server, Sentinel, exporter | Commands, replication, slots, failure detection, and metrics. |
+
+The controller continuously compares the declared state with these resources.
+Manual changes to generated objects can be overwritten and can also hide the
+actual source of a failed operation.
+
+## Cluster architecture
+
+A Cluster has 16,384 hash slots. `spec.replicas.shards` controls the number of
+shards and must be between 3 and 128. `spec.replicas.replicasOfShard` controls the
+number of members in every shard and must be between 1 and 5.
+
+The operator creates one StatefulSet for each shard, assigns slots, joins new
+members, rebalances slots during shard scaling, and heals membership after Pod
+replacement. A value of `replicasOfShard: 1` creates a primary without a replica;
+use at least 2 for primary-replica redundancy.
+
+## Failover architecture
+
+A Failover instance has exactly one data shard. Its data member count is
+`spec.replicas.replicasOfShard`. The operator also creates or references a Valkey
+Sentinel deployment. When the operator creates Sentinel, the count must be odd
+and at least 3. Sentinel monitors the primary and coordinates failover.
+
+The operator exposes separate read-write and read-only Services. Clients that
+must write should use the read-write Service and reconnect after failover.
+
+## Replica architecture
+
+Replica architecture uses the same primary-replica data workload as Failover but
+does not deploy Sentinel. With one member it behaves as a single-node instance.
+With multiple members the operator maintains replication and manages recovery,
+but applications do not have Sentinel discovery.
+
+## Select an architecture
+
+| Requirement | Cluster | Failover | Replica |
+| --- | :---: | :---: | :---: |
+| Dataset larger than one primary can hold | Yes | No | No |
+| Horizontal write distribution | Yes | No | No |
+| Automatic slot rebalancing | Yes | Not applicable | Not applicable |
+| Sentinel-coordinated primary failover | No | Yes | No |
+| Simple primary-replica topology | No | Yes | Yes |
+| Single-node development shape | No | No | Yes, with one member |
+| Cluster-aware client required | Yes | No | No |
+
+Cluster multi-key commands require the involved keys to map to the same hash
+slot. Failover and Replica keep the complete dataset on each data member and are
+therefore bounded by one member's usable memory.
+
+## Storage and failure domains
+
+Persistent storage protects data files across Pod recreation, subject to the
+StorageClass, volume health, and PVC retention behavior. It does not protect
+against logical deletion, corrupted data, namespace or cluster loss, or an
+operator error. Use an independently tested external data-protection process.
+
+Anti-affinity improves placement only when enough eligible Kubernetes nodes and
+failure domains exist. A redundant Valkey topology placed on one node or one
+storage failure domain does not provide infrastructure-level high availability.
+
+## Reconciliation and status
+
+The high-level resource reports these phases:
+
+| Phase | Meaning |
+| --- | --- |
+| `Initializing` | Child resources are being created or reconciled. |
+| `Rebalancing` | Cluster hash slots are moving after a topology change. |
+| `Ready` | Reconciled resources are available according to the operator. |
+| `Failed` | Reconciliation reached a non-recoverable error. Read `.status.message` and Events. |
+| `Paused` | Workload replicas have been reduced to zero by the pause annotation. |
+
+Inspect the full observed state with:
+
+```bash
+kubectl -n <namespace> get valkey <name> -o yaml
+kubectl -n <namespace> describe valkey <name>
+kubectl -n <namespace> get events --sort-by=.lastTimestamp
+```

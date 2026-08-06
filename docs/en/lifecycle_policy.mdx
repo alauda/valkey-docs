@@ -1,0 +1,68 @@
+---
+weight: 12
+i18n:
+  title:
+    zh: 生命周期策略
+title: Lifecycle policy
+---
+
+# Lifecycle policy
+
+This page distinguishes published product facts from lifecycle information that
+has not yet been established for Alauda Build of Valkey.
+
+## Current release baseline
+
+| Item | 2.0.0 status |
+| --- | --- |
+| Product release | Next major release |
+| Supported Valkey server lines | `7.2`, `8.1`, and `9.1` |
+| Release date | Not yet published |
+| End of full support | Not yet published |
+| End of maintenance | Not yet published |
+| Alauda Container Platform compatibility matrix | Not yet published |
+
+Do not derive product support dates from the upstream Valkey lifecycle. Product,
+operator, server-image, and platform support are separate compatibility
+dimensions.
+
+## Version dimensions
+
+| Version | What it controls | How to inspect it |
+| --- | --- | --- |
+| Product version | Installed Alauda Build of Valkey package and operator | Inspect the installed package metadata and operator image. |
+| API version | Kubernetes resource schema | `kubectl api-resources --api-group=rds.valkey.buf.red` |
+| Server line | Valkey process created for an instance | `Valkey.spec.version` and `Valkey.status.lastVersion` |
+| Container image | Exact delivered server or operator build | Inspect the relevant Deployment or Pod specification. |
+
+Upgrading the product does not by itself change `spec.version` on existing
+instances. Upgrade each server line explicitly with the instance upgrade
+procedure.
+
+## Supported-version rule
+
+The 2.0.0 package supplies server images for `7.2`, `8.1`, and `9.1`. The
+generated CRD also accepts `8.0` and `9.0` because of API compatibility history,
+but schema acceptance is not a support commitment. Do not create or upgrade an
+instance to those values.
+
+Inventory all instance versions with:
+
+```bash
+kubectl get valkey -A \
+  -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,ARCH:.spec.arch,DESIRED:.spec.version,OBSERVED:.status.lastVersion,PHASE:.status.phase'
+```
+
+## Planning requirements
+
+Before a production rollout or upgrade, obtain the release-specific information
+that is not defined in this repository:
+
+- the final release date and supported platform versions;
+- the supported source-to-target product upgrade paths;
+- component image digests and security advisories;
+- release-specific backup, rollback, and support procedures;
+- tested Valkey server upgrade paths and module compatibility.
+
+If any of these inputs is missing, validate the change in a representative test
+cluster and treat production rollout as pending product-owner confirmation.

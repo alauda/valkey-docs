@@ -1,0 +1,135 @@
+---
+weight: 10
+i18n:
+  title:
+    zh: 实例未就绪
+title: Diagnose an instance that is not Ready
+---
+
+# Diagnose an instance that is not Ready
+
+Use this procedure when a `Valkey` remains `Initializing`, `Rebalancing`, or
+`Failed`, or when expected Pods and Services are unavailable.
+
+## Preserve the current state
+
+Do not begin by restarting or editing child resources. Record the owning
+resource, child resources, Pods, and Events first:
+
+```bash
+kubectl -n <namespace> get valkey <name> -o yaml
+kubectl -n <namespace> describe valkey <name>
+kubectl -n <namespace> get cluster,failover,sentinel -o wide
+kubectl -n <namespace> get pods,service,pvc -l buf.red/name=<name> -o wide
+kubectl -n <namespace> get events --sort-by=.lastTimestamp
+```
+
+Read `.status.phase` and `.status.message`. The high-level status is the primary
+summary; child-resource status provides the topology-specific detail.
+
+## Check admission and specification failures
+
+If creation or update is rejected, reproduce validation without changing the
+live object:
+
+```bash
+kubectl apply --dry-run=server -f valkey.yaml
+```
+
+Common validation boundaries include:
+
+| Symptom | Check |
+| --- | --- |
+| Unsupported version | Use only `7.2`, `8.1`, or `9.1` for product 2.0.0. |
+| Resource validation error | Specify CPU and memory; keep requests and limits equal to avoid webhook warnings. |
+| Cluster shard error | Use 3–128 shards and 1–5 total members per shard. |
+| Failover Sentinel error | Keep data shards at 1 and use an odd Sentinel count of at least 3. |
+| NodePort rejection | Leave `spec.access.ports` unset unless the delivered build defines a validated format; check for cluster-wide port conflicts. |
+| TLS rejection or stall | Verify `certIssuer`, `certIssuerType`, issuer readiness, and cert-manager. |
+| ACL user rejection | Verify the same-namespace password Secret, `password` key, password length, username, and ACL syntax. |
+
+## Check unschedulable Pods
+
+```bash
+kubectl -n <namespace> get pods -l buf.red/name=<name> -o wide
+kubectl -n <namespace> describe pod <pending-pod>
+kubectl get nodes -o wide
+kubectl describe node <candidate-node>
+```
+
+Look for insufficient CPU or memory, required anti-affinity, node-selector
+mismatch, untolerated taints, PVC topology conflicts, and namespace quotas.
+Required `AntiAffinity` can need one eligible node per data Pod.
+
+## Check storage
+
+```bash
+kubectl -n <namespace> get pvc -l buf.red/name=<name>
+kubectl -n <namespace> describe pvc <pvc-name>
+kubectl get storageclass
+```
+
+A Pending PVC blocks its Pod. Confirm StorageClass existence, provisioner health,
+access mode, capacity, volume topology, and storage quota. Do not delete a PVC
+until its data-retention requirement and recovery procedure are known.
+
+## Check TLS resources
+
+```bash
+kubectl -n <namespace> get certificate,secret
+kubectl -n <namespace> describe certificate <name>-cert
+kubectl -n <namespace> get secret <name>-tls
+kubectl -n <namespace> get issuer
+kubectl get clusterissuer
+```
+
+The operator expects cert-manager to issue `<name>-cert` into `<name>-tls`. Check
+issuer readiness, DNS names, certificate Events, and cert-manager logs. Never
+print private-key data in a support transcript.
+
+## Check containers and the operator
+
+```bash
+kubectl -n <namespace> logs <pod-name> -c valkey --previous --tail=200
+kubectl -n <namespace> logs <pod-name> -c exporter --tail=200
+kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator
+kubectl -n <operator-namespace> logs deployment/<operator-deployment> \
+  --all-containers --since=30m
+```
+
+For Failover, also inspect the `sentinel` container. Match logs to the failure
+time and correlate them with Events.
+
+## Check topology health
+
+For Cluster:
+
+```bash
+kubectl -n <namespace> exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+kubectl -n <namespace> exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER NODES
+```
+
+For Failover or Replica:
+
+```bash
+kubectl -n <namespace> exec <ready-data-pod> -c valkey -- \
+  valkey-cli INFO replication
+```
+
+Add ACL and TLS options when the endpoint requires them. Do not assume that a
+successful `PING` to one node proves full Cluster coverage or healthy
+replication.
+
+## Escalation package
+
+Provide the following with Secret values removed:
+
+- `Valkey` and relevant child-resource YAML;
+- Events and Pod descriptions;
+- operator, data-node, Sentinel, and exporter logs for a bounded time range;
+- PVC, Service, EndpointSlice, and Certificate status;
+- `CLUSTER INFO` and `CLUSTER NODES`, or `INFO replication`;
+- the product version, operator image, server images, exact failure time, and
+  most recent change.

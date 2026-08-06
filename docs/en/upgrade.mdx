@@ -1,0 +1,110 @@
+---
+weight: 16
+i18n:
+  title:
+    zh: 产品升级
+title: Upgrade the product
+---
+
+# Upgrade the product
+
+This procedure covers the Alauda Build of Valkey package and Valkey Operator. It
+does not upgrade the Valkey server line of an existing instance. For that change,
+follow [Upgrade Valkey](./how_to/30-upgrade.mdx).
+
+The exact package upload and upgrade command depends on the Alauda Container
+Platform distribution. It is not defined by the `valkey-operator` repository.
+Use the approved CLI workflow from the delivered 2.0.0 release package; there is
+no Web Console procedure for this product.
+
+## Before you begin
+
+1. Confirm that the source and target product versions form a supported upgrade
+   path in the release-specific compatibility matrix.
+2. Confirm that every managed instance is `Ready` and that no scaling, restart,
+   certificate, configuration, or server-version operation is running.
+3. Complete and test the external data-protection procedure for persistent data.
+   The operator does not provide integrated backup or product rollback.
+4. Record all `Valkey` and `User` specifications, installed CRDs, operator image,
+   and warning Events. Do not export Secret values into an unsecured file.
+5. Verify that the target release still packages every server line used by an
+   existing instance.
+
+## Record the current state
+
+```bash
+kubectl get valkey -A \
+  -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,ARCH:.spec.arch,VERSION:.spec.version,PHASE:.status.phase'
+kubectl get user -A
+kubectl get crd \
+  valkeys.rds.valkey.buf.red \
+  clusters.valkey.buf.red \
+  failovers.valkey.buf.red \
+  sentinels.valkey.buf.red \
+  users.valkey.buf.red
+kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator \
+  -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,IMAGE:.spec.template.spec.containers[*].image,AVAILABLE:.status.availableReplicas'
+```
+
+Save instance specifications separately from credentials:
+
+```bash
+kubectl get valkey -A -o yaml > valkey-instances-before-product-upgrade.yaml
+kubectl get user -A -o yaml > valkey-users-before-product-upgrade.yaml
+```
+
+Protect these files because resource metadata and ACL rules may contain
+environment information, even though passwords are stored in Secrets.
+
+## Apply the package upgrade
+
+Use the target release's approved CLI package workflow. Before approval, inspect
+the proposed operator and server image changes. Apply only one control-plane
+upgrade at a time and do not edit operator-owned child resources while the
+operator Deployment is rolling out.
+
+Watch the operator without assuming its namespace:
+
+```bash
+kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator -w
+kubectl get pods -A -l app.kubernetes.io/name=valkey-operator -w
+kubectl get events -A --sort-by=.lastTimestamp
+```
+
+If the delivered package uses an Operator Lifecycle Manager subscription or
+another package controller, inspect its status with the CLI specified by that
+release. Do not guess the Subscription name, namespace, channel, or approval
+strategy from another product.
+
+## Verify the result
+
+1. Confirm that all five CRDs are `Established` and that their served versions
+   match the target release.
+2. Confirm that the operator Deployment is available and its containers use the
+   expected target images.
+3. Confirm that every `Valkey` returns to `Ready`; inspect `.status.message` and
+   Events for any instance that does not.
+4. Verify application reads and writes, ACL authentication, Cluster slot
+   coverage or Failover primary selection, TLS, and exporter metrics.
+5. Confirm that `spec.version` did not change unexpectedly.
+
+Run the final API and instance checks:
+
+```bash
+kubectl wait --for=condition=Established --timeout=120s \
+  crd/valkeys.rds.valkey.buf.red \
+  crd/clusters.valkey.buf.red \
+  crd/failovers.valkey.buf.red \
+  crd/sentinels.valkey.buf.red \
+  crd/users.valkey.buf.red
+kubectl get valkey -A
+kubectl get user -A
+```
+
+## Failure boundary
+
+Do not roll back the operator image or CRDs independently unless the delivered
+release explicitly defines that rollback. A newer controller may have already
+written status or child-resource fields that an older controller does not
+understand. Preserve logs, Events, the recorded specifications, and the exact
+package-controller status, then follow the product support recovery plan.

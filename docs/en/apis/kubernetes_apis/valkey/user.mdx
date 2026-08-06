@@ -1,0 +1,29 @@
+---
+weight: 20
+i18n:
+  title:
+    en: User
+---
+
+# User
+
+{/* cspell:ignore valkey */}
+
+`User` manages a Valkey ACL account for an existing instance. Custom users must
+reference a same-namespace Secret with a `password` key.
+
+## Main fields
+
+| Field | Purpose | Boundary |
+| --- | --- | --- |
+| `spec.accountType` | `system` or `custom` | Applications use `custom`; `system` is reserved for the operator account. |
+| `spec.arch` | Owning instance architecture | Must match `cluster`, `failover`, or `replica`. |
+| `spec.username` | Valkey ACL username | Letters, digits, and hyphens; maximum 31 characters. |
+| `spec.passwordSecrets` | Ordered Secret names used during password transitions | Every Secret is in the same namespace and contains key `password`; passwords are 8–32 characters. |
+| `spec.aclRules` | Command, key, and channel permissions | Custom accounts cannot receive ACL-management capability. |
+| `spec.instanceName` | Owning `Valkey` name | Required and immutable in normal operational use. |
+
+Read the canonical phase from `status.phase`. `status.Phase` is a legacy mirror
+retained for compatibility; new clients should not depend on its capitalization.
+
+<K8sCrd name="users.valkey.buf.red" />

@@ -1,0 +1,77 @@
+---
+weight: 20
+i18n:
+  title:
+    zh: 排查大 Key
+title: Analyze large keys with valkey-cli
+---
+
+# Analyze large keys with valkey-cli
+
+The Valkey Operator does not provide an integrated large-key inspection report.
+Use `valkey-cli` directly when a latency, memory, network, persistence, or slot
+migration investigation requires key-size evidence.
+
+See the official [Valkey CLI documentation](https://valkey.io/topics/cli/) for
+the option semantics supported by the CLI delivered with your server image.
+
+## Operational impact
+
+`valkey-cli --bigkeys` iterates the keyspace and runs type-specific size
+commands. Although iteration uses cursor-based scanning, the additional commands
+consume server CPU and network bandwidth. Large collection cardinality checks
+can also be expensive.
+
+- Run during lower traffic and monitor latency, CPU, memory, and network usage.
+- Use a read-only application account with only the commands and key patterns
+  required for the inspection.
+- Do not put passwords on the command line or in shell history.
+- Stop the scan if service indicators degrade.
+- Treat results as a point-in-time observation; the keyspace can change during
+  the scan.
+
+## Scan one endpoint
+
+```bash
+valkey-cli -h <host> -p 6379 --user <username> --askpass \
+  --bigkeys --i 0.1
+```
+
+The interval reduces scan rate by adding a delay per scan cycle; it does not make
+the command impact-free. Save only the non-sensitive output required for the
+investigation.
+
+With TLS:
+
+```bash
+valkey-cli --tls --cacert valkey-ca.crt \
+  -h <host> -p 6379 --user <username> --askpass \
+  --bigkeys --i 0.1
+```
+
+## Cluster coverage
+
+A scan issued to one Cluster node covers that node's local keyspace, not all
+primary nodes. List the observed primary Pods from the high-level status:
+
+```bash
+kubectl -n <namespace> get valkey <name> \
+  -o jsonpath='{range .status.nodes[?(@.role=="master")]}{.podName}{"\t"}{.slots}{"\n"}{end}'
+```
+
+Run the approved scan once against each current primary endpoint. Topology can
+change during failover or rebalancing, so record `CLUSTER NODES` before and after
+the collection and avoid scanning while slots are moving.
+
+## Interpret and act
+
+The command reports the largest observed key for each data type and aggregate
+statistics. It does not determine a universal safe size. Evaluate the result
+against command complexity, access frequency, network payload, persistence
+cost, replication, and application latency objectives.
+
+Prefer application-level remediation such as splitting oversized values or
+collections, bounding growth, applying expiration where semantically correct,
+and avoiding commands whose complexity is unsafe for the observed cardinality.
+Do not delete or rewrite a production key until ownership, recovery, and
+application behavior have been validated.

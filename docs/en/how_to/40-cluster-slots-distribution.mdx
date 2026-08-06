@@ -1,0 +1,94 @@
+---
+weight: 40
+i18n:
+  title:
+    zh: 初始化 Cluster 槽位
+title: Initialize Cluster slot distribution
+---
+
+# Initialize Cluster slot distribution
+
+By default, the operator allocates all 16,384 Cluster hash slots across the
+configured shards. For a new Cluster, `spec.replicas.shardsConfig` can provide an
+explicit initial slot plan.
+
+This field is creation-only in the 2.0.0 implementation. The controller consumes
+it only while the child Cluster has no initialized shard status. Changing
+`shardsConfig` on an existing instance is not a supported redistribution
+procedure; use shard scaling for operator-managed rebalancing.
+
+## Constraints
+
+- Use this field only with `spec.arch: cluster`.
+- The number of `shardsConfig` entries must equal `spec.replicas.shards`.
+- At least three entries are required.
+- Slot values must be integers from 0 through 16383, expressed as individual
+  values or inclusive ranges separated by commas.
+- The union of all entries must cover every slot exactly once. Gaps and overlaps
+  are rejected by the validating webhook.
+- `spec.replicas.replicasOfShard` remains the total member count for each shard.
+
+## Create a Cluster with an explicit plan
+
+The following manifest divides the slot space among three shards:
+
+```bash
+kubectl apply -f - <<'EOF'
+apiVersion: rds.valkey.buf.red/v1alpha1
+kind: Valkey
+metadata:
+  name: valkey-slots
+  namespace: default
+spec:
+  version: "8.1"
+  arch: cluster
+  replicas:
+    shards: 3
+    replicasOfShard: 2
+    shardsConfig:
+      - slots: "0-5460"
+      - slots: "5461-10922"
+      - slots: "10923-16383"
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+  storage:
+    storageClassName: standard
+    capacity: 10Gi
+    accessMode: ReadWriteOnce
+  access:
+    serviceType: ClusterIP
+  affinityPolicy: AntiAffinityInShard
+EOF
+```
+
+When the resource already exists, server-side dry-run exercises update behavior,
+not the create-only slot-plan validation. Validate the manifest before the first
+creation in a namespace where the name does not exist:
+
+```bash
+kubectl apply --dry-run=server -f valkey-slots.yaml
+```
+
+## Verify the allocation
+
+Wait for `Ready`, then compare the high-level node status with the server view:
+
+```bash
+kubectl -n default get valkey valkey-slots -w
+kubectl -n default get valkey valkey-slots \
+  -o jsonpath='{range .status.nodes[*]}{.podName}{"\t"}{.role}{"\t"}{.slots}{"\n"}{end}'
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER SLOTS
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+```
+
+Do not edit the operator-owned child `Cluster.status.shards` to repair a plan.
+For a rejected create, correct the manifest and apply it again. For an already
+initialized Cluster with an incorrect business layout, plan a supported shard
+scaling operation or create a replacement instance and migrate data.

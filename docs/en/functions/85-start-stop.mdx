@@ -1,0 +1,50 @@
+---
+weight: 85
+i18n:
+  title:
+    zh: 暂停与恢复
+title: Pause and resume
+---
+
+# Pause and resume
+
+The operator pauses an instance when
+`spec.podAnnotations["buf.red/pause-timestamp"]` is non-empty. Pausing reduces
+managed workload replicas to zero and makes the instance unavailable.
+
+## Safety requirements
+
+- Stop clients and writes before pausing.
+- Use persistent storage if data must survive Pod deletion.
+- A pause is not a backup. Complete external data protection first.
+- Do not pause during scaling, rebalancing, upgrade, certificate rotation, or
+  another rolling update.
+
+## Pause
+
+```bash
+PAUSED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p "{\"spec\":{\"podAnnotations\":{\"buf.red/pause-timestamp\":\"${PAUSED_AT}\"}}}"
+kubectl -n default get valkey valkey-cluster -w
+```
+
+The expected phase is `Paused`. Confirm that the managed Pods have terminated:
+
+```bash
+kubectl -n default get pods -l buf.red/name=valkey-cluster
+kubectl -n default get pvc -l buf.red/name=valkey-cluster
+```
+
+## Resume
+
+Remove the map entry with a JSON merge patch:
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"podAnnotations":{"buf.red/pause-timestamp":null}}}'
+kubectl -n default get valkey valkey-cluster -w
+```
+
+Wait for `Ready`, verify all expected members and Cluster slots or the current
+primary, and then reconnect applications.

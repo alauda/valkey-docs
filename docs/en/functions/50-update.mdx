@@ -1,0 +1,89 @@
+---
+weight: 50
+i18n:
+  title:
+    zh: 更新与扩缩容
+title: Update and scale
+---
+
+# Update and scale
+
+Change the owning `Valkey` resource. Do not edit child `Cluster`, `Failover`,
+`Sentinel`, StatefulSet, or Service resources because reconciliation overwrites
+those changes.
+
+## Scale a Cluster
+
+This patch increases a Cluster from three to four shards while keeping two
+members in every shard:
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"replicas":{"shards":4,"replicasOfShard":2}}}'
+kubectl -n default get valkey valkey-cluster -w
+```
+
+The phase can move through `Initializing` and `Rebalancing`. Do not start another
+topology change until it returns to `Ready`. Inspect slot progress with:
+
+```bash
+kubectl -n default get valkey valkey-cluster \
+  -o jsonpath='{.status.phase}{"\n"}{.status.nodes}{"\n"}'
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+```
+
+Scaling down shards moves slots and removes workloads. Confirm capacity and free
+memory before reducing the shard count.
+
+For capacity planning, progress interpretation, slot verification, and failure
+handling, use [Scale Cluster shards](../how_to/20-cluster-scaling.mdx).
+
+## Change members per shard
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"replicas":{"shards":4,"replicasOfShard":3}}}'
+```
+
+The field is the total member count, not the number of replicas in addition to a
+primary. Values are 1–5. A value of 1 removes primary-replica redundancy.
+
+For Failover or Replica, `shards` must remain 1; change only the data-member
+count:
+
+```bash
+kubectl -n default patch valkey valkey-failover --type=merge \
+  -p '{"spec":{"replicas":{"shards":1,"replicasOfShard":3}}}'
+```
+
+## Change compute resources
+
+Patch both requests and limits. Pod-template changes cause workload replacement:
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge -p '
+{
+  "spec": {
+    "resources": {
+      "requests": {"cpu": "1", "memory": "2Gi"},
+      "limits": {"cpu": "1", "memory": "2Gi"}
+    }
+  }
+}'
+```
+
+Verify that the target nodes have enough schedulable resources before applying
+the patch. Watch Pods and Events for `Pending`, eviction, or OOM termination.
+
+## Changes that need special handling
+
+- Change `spec.version` only with the [Upgrade Valkey](../how_to/30-upgrade.mdx)
+  procedure. Downgrades are rejected.
+- Treat `spec.arch` as immutable. Recreate and migrate data when changing
+  architecture; the operator has no documented in-place conversion workflow.
+- Treat `storageClassName`, PVC access mode, and existing PVC size as
+  storage-platform operations. The operator does not implement a general volume
+  migration workflow.
+- Apply one topology, version, storage, or access change at a time and wait for
+  `Ready` before the next change.

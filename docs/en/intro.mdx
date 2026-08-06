@@ -1,0 +1,77 @@
+---
+weight: 10
+i18n:
+  title:
+    zh: 介绍
+title: Introduction
+---
+
+# Introduction
+
+Alauda Build of Valkey deploys and operates Valkey instances on Kubernetes
+through declarative custom resources. The Valkey Operator reconciles the desired
+state, creates the data-plane workloads and Services, and performs lifecycle
+operations such as scaling, configuration updates, upgrades, and node recovery.
+
+All instance operations are CLI-based. This product does not provide a Web
+Console. Use `kubectl`, `valkey-cli`, and Kubernetes-native automation.
+
+## Release and server versions
+
+The next major product release is `2.0.0`. It supports these Valkey server lines:
+
+| Supported line | Use in `spec.version` |
+| --- | --- |
+| Valkey 7.2 | `"7.2"` |
+| Valkey 8.1 | `"8.1"` |
+| Valkey 9.1 | `"9.1"` |
+
+Do not use `8.0` or `9.0`, even if a compatibility enum in an installed custom
+resource definition (CRD) accepts those values. The 2.0.0 product package
+contains server images only for 7.2, 8.1, and 9.1.
+
+## Architectures
+
+| Architecture | API value | Description | Minimum production shape |
+| --- | --- | --- | --- |
+| Cluster | `cluster` | Distributes 16,384 hash slots across shards. | At least 3 shards and at least 2 members per shard. |
+| Failover | `failover` | Runs one primary-replica group monitored by an odd-numbered Sentinel deployment. | At least 2 data members and 3 Sentinels. |
+| Replica | `replica` | Runs one primary-replica group without Sentinel. | Choose 1 member only for non-high-availability use; use at least 2 when replication is required. |
+
+`spec.replicas.replicasOfShard` is a legacy field name. In the implemented
+workload, it is the total member count per Cluster shard, or the total data-node
+count for Failover and Replica. For example, `replicasOfShard: 2` creates one
+primary and one replica after reconciliation.
+
+## Implemented capabilities
+
+- online shard and member scaling;
+- rolling version upgrades and rolling restarts;
+- Valkey access control list (ACL) users backed by Kubernetes Secrets;
+- ClusterIP, NodePort, and LoadBalancer Services;
+- IPv4 or IPv6 single-stack Services;
+- optional cert-manager-issued TLS;
+- optional persistent storage through persistent volume claims (PVCs);
+- node selectors, tolerations, affinity, and Pod security context;
+- Valkey metrics through an exporter sidecar;
+- hot configuration updates for supported parameters.
+
+## Responsibility boundary
+
+The operator reconciles Kubernetes resources and Valkey topology. Application
+owners remain responsible for workload-specific key design, client retry and
+timeout behavior, and capacity objectives. Backup, restore, and disaster recovery
+are not product capabilities in 2.0.0. Cluster or Failover redundancy protects
+against some Pod or node failures but is neither backup nor disaster recovery.
+
+Use the high-level `Valkey` resource for desired-state changes and `User` for ACL
+accounts. Treat generated `Cluster`, `Failover`, `Sentinel`, StatefulSet,
+Service, ConfigMap, and Secret resources as operator-owned implementation
+details.
+
+See [Current limitations](./limitations.mdx) for unsupported capabilities and the
+boundaries of fixed NodePort assignment, PVC retention, and monitoring integration.
+
+---
+
+Valkey is a trademark of LF Projects, LLC.

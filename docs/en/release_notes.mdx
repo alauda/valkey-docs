@@ -1,0 +1,92 @@
+---
+weight: 11
+i18n:
+  title:
+    zh: 发版说明
+title: Release notes
+---
+
+# Release notes
+
+## 2.0.0 — next major release
+
+Version 2.0.0 is the next major release. A release date and platform compatibility
+matrix have not been established in this documentation baseline.
+
+### Supported Valkey versions
+
+- Valkey 7.2
+- Valkey 8.1
+- Valkey 9.1
+
+### Verified feature scope
+
+- Cluster, Failover, and Replica architectures;
+- declarative lifecycle management through Kubernetes APIs;
+- online topology scaling and Cluster slot rebalancing;
+- rolling upgrades, configuration-driven restarts, and explicit rolling restart;
+- access control list (ACL) user management with Kubernetes Secrets;
+- ClusterIP, NodePort, and LoadBalancer access;
+- IPv4 and IPv6 single-stack Services;
+- optional TLS issued through cert-manager;
+- persistent storage and Kubernetes scheduling controls;
+- Valkey exporter sidecar metrics.
+
+### API and architecture
+
+- The primary application API is `rds.valkey.buf.red/v1alpha1`, kind `Valkey`,
+  with short name `vk`.
+- `spec.arch` accepts `cluster`, `failover`, and `replica`.
+- `spec.replicas.replicasOfShard` represents total members, not replicas in
+  addition to a primary.
+- Cluster supports 3–128 shards and 1–5 members per shard.
+- Failover uses one data shard and an odd Sentinel count of at least three.
+- Custom initial Cluster slot distribution is available through
+  `spec.replicas.shardsConfig` at creation time.
+
+### Operational changes
+
+- CPU and memory requests and limits are validated; equal values avoid the
+  resource warning emitted by the admission webhook.
+- Server downgrades are rejected. Use the supported forward path `7.2` → `8.1`
+  → `9.1` unless release-specific testing documents a skipped-line upgrade.
+- The exporter is enabled by default unless `spec.exporter.disable` is true.
+- Pause/resume and explicit rolling restart are driven through Pod annotations
+  on the high-level resource.
+- TLS uses cert-manager and requires an existing `Issuer` or `ClusterIssuer`.
+- The default operator installation also uses cert-manager for admission webhook
+  certificates; an external webhook certificate path must provide the required
+  certificate authority (CA) bundle explicitly.
+
+### Operational interface
+
+Version 2.0.0 is CLI-only and does not include a Web Console. Use `kubectl` and
+`valkey-cli` for all instance operations.
+
+### Excluded capabilities
+
+Disaster recovery is not supported. The operator also does not implement
+integrated backup/restore, cross-cluster replication or failover, integrated
+large-key inspection reports, or parameter templates. See
+[Current limitations](./limitations.mdx).
+
+### Known compatibility boundaries
+
+- The custom resource definition (CRD) retains `8.0` and `9.0` enum values, but
+  the product package does not supply those server lines.
+- The schema and runtime parser disagree on the fixed `spec.access.ports`
+  format. Leave it unset for automatic NodePort allocation unless the delivered
+  build documents a validated format.
+- Persistent volume claim (PVC) retention through
+  `spec.storage.retainAfterDeleted` does not have a clear enough implementation
+  guarantee for destructive workflows. Inspect and protect required PVCs before
+  deletion.
+- The shipped ServiceMonitor targets operator metrics, not Valkey data-plane
+  Services. Configure and verify data-plane scraping separately.
+
+### Before adopting 2.0.0
+
+The release date and Alauda Container Platform compatibility matrix are still
+pending. Validate the product installation, server upgrade path, module
+compatibility, external data-protection procedure, and client behavior in a
+representative non-production cluster before rollout.

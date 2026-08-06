@@ -1,0 +1,77 @@
+---
+weight: 75
+i18n:
+  title:
+    zh: 监控
+title: Monitor an instance
+---
+
+# Monitor an instance
+
+The operator can inject a Valkey exporter sidecar. The exporter listens on port
+`9121` and serves metrics at `/metrics`.
+
+## Configure the exporter
+
+The high-level API enables the exporter unless `spec.exporter.disable` is `true`.
+Set resources explicitly for predictable scheduling:
+
+```yaml
+spec:
+  exporter:
+    disable: false
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 100m
+        memory: 384Mi
+```
+
+Disable it only when another monitoring mechanism is installed:
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge \
+  -p '{"spec":{"exporter":{"disable":true}}}'
+```
+
+## Verify exporter health
+
+For Cluster architecture, the instance Service exposes the metrics port:
+
+```bash
+kubectl -n default get service valkey-cluster
+kubectl -n default port-forward service/valkey-cluster 9121:9121
+```
+
+In another terminal:
+
+```bash
+curl --fail --silent http://127.0.0.1:9121/metrics | head
+```
+
+For Failover or Replica, discover the headless metrics Service, whose name starts
+with `rfr-`, and port-forward it:
+
+```bash
+kubectl -n default get service -l buf.red/name=valkey-failover
+kubectl -n default port-forward service/rfr-valkey-failover 9121:9121
+```
+
+You can also inspect the sidecar directly:
+
+```bash
+kubectl -n default get pods -l buf.red/name=valkey-cluster
+kubectl -n default logs <pod-name> -c exporter --tail=200
+```
+
+## Integrate scraping
+
+The ServiceMonitor shipped with the operator selects operator metrics. It does
+not by itself scrape Valkey data-plane Services. Create a `ServiceMonitor`,
+`PodMonitor`, or equivalent scrape configuration that matches the Services in
+your environment, and verify target health in your monitoring system.
+
+When TLS and ACL are enabled, the exporter receives the operator-managed
+credentials and TLS files. Do not copy credentials into scrape configuration.

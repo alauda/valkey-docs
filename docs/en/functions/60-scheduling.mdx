@@ -1,0 +1,82 @@
+---
+weight: 60
+i18n:
+  title:
+    zh: 调度
+title: Configure scheduling
+---
+
+# Configure scheduling
+
+The high-level `Valkey` API exposes standard Kubernetes scheduling controls.
+
+## Affinity policies
+
+Cluster architecture accepts these `spec.affinityPolicy` values:
+
+| Value | Behavior |
+| --- | --- |
+| `SoftAntiAffinity` | Prefers spreading Pods across nodes but does not require it. |
+| `AntiAffinityInShard` | Requires members of the same shard to run on different nodes. This is the default applied by the Cluster builder. |
+| `AntiAffinity` | Requires all instance Pods to run on different nodes. |
+| `CustomAffinity` | Uses `spec.customAffinity`. |
+
+Required anti-affinity can leave Pods `Pending` when the cluster has too few
+eligible nodes. For example, three shards with two members and full
+`AntiAffinity` need at least six matching nodes.
+
+## Node selector and tolerations
+
+```bash
+kubectl -n default patch valkey valkey-cluster --type=merge -p '
+{
+  "spec": {
+    "nodeSelector": {
+      "workload.alauda.io/type": "memory-optimized"
+    },
+    "tolerations": [
+      {
+        "key": "middleware",
+        "operator": "Equal",
+        "value": "valkey",
+        "effect": "NoSchedule"
+      }
+    ]
+  }
+}'
+```
+
+The operator propagates these settings to data workloads. For an operator-created
+Sentinel deployment, unspecified Sentinel node selectors and tolerations inherit
+the high-level instance values.
+
+## Custom affinity
+
+When using custom affinity, set the policy and the Kubernetes `Affinity` object
+together:
+
+```yaml
+spec:
+  affinityPolicy: CustomAffinity
+  customAffinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: topology.kubernetes.io/zone
+            labelSelector:
+              matchLabels:
+                buf.red/name: valkey-cluster
+```
+
+## Verify scheduling
+
+```bash
+kubectl -n default get pods -l buf.red/name=valkey-cluster -o wide
+kubectl -n default get events --sort-by=.lastTimestamp
+kubectl -n default describe pod <pending-pod>
+```
+
+Wait for the `Valkey` resource to return to `Ready`. If Pods remain `Pending`,
+check node labels, taints, allocatable resources, volume topology, and required
+anti-affinity before relaxing the policy.
