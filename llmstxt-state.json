@@ -1,0 +1,274 @@
+{
+  "version": 1,
+  "generator_version": 3,
+  "project_name": "Alauda Cache Service E2 Documentation",
+  "summary": "CLI-focused documentation for deploying and operating Valkey on Kubernetes.",
+  "generated_at": "2026-08-12T07:09:47Z",
+  "include_patterns": [
+    "**/*.md",
+    "**/*.mdx"
+  ],
+  "exclude_patterns": [
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.llmstxt-cache/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/llms.txt",
+    "**/llmstxt-state.json",
+    "README.md",
+    "**/.DS_Store",
+    "docs/agent/**",
+    "AGENTS.md",
+    "CLAUDE.md"
+  ],
+  "grouping_base_path": "docs/en",
+  "description_max_words": 150,
+  "files": {
+    "docs/en/apis/index.mdx": {
+      "sha256": "e7c683b399b862f1bf32d3abeb6e2428d0930a46546c61b026cbd2ad15229ace",
+      "size": 110,
+      "description": "Top-level entry page for the API Reference section, rendering an auto-generated overview of the API documentation subsections via the `<Overview>` component.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/apis/kubernetes_apis/index.mdx": {
+      "sha256": "cc4bf15b13186789e1ffcca27fd79f06cc20392d17120c302f10ffa0e0cd209c",
+      "size": 112,
+      "description": "Index page for the Kubernetes APIs reference, providing an auto-generated navigation overview of the custom resource definitions that users author directly.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/apis/kubernetes_apis/valkey/index.mdx": {
+      "sha256": "3d1035fe1fef1639b6bf4896b2441521bf9663b376c3db58b3ce7083e2b2fb89",
+      "size": 104,
+      "description": "Index page for the Valkey API group, providing navigation to the `Valkey` and `User` custom resource references that make up the public authoring surface.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/apis/kubernetes_apis/valkey/user.mdx": {
+      "sha256": "c0aca668e406332d009153d57633f210e07bae81a6f9edfce83afd7f0ff952e5",
+      "size": 1408,
+      "description": "API reference for `User`, which manages a Valkey access control list account for an existing instance, rendering the schema for `users.valkey.buf.red` via the `<K8sCrd>` component. Documents the account type, owning architecture and instance name, username, ordered password Secrets used during rotation, and access control list rules, together with the boundary on each: passwords are 8-32 characters under the `password` key, custom accounts cannot receive access control list management capability, and the username helper range is not enforced during admission. Notes that `status.phase` is canonical and the capitalised legacy mirror should not be relied on.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/apis/kubernetes_apis/valkey/valkey.mdx": {
+      "sha256": "701bb8989ce817f960dd7ee52e08052370427a40e5dfce995e55625d77a3d3b7",
+      "size": 3372,
+      "description": "API reference for `Valkey`, the high-level namespaced resource used to create and operate an instance, rendering the schema for `valkeys.rds.valkey.buf.red` via the `<K8sCrd>` component. Tabulates the main specification fields - version, architecture, replicas and initial slot plan, resources, custom configurations, modules, storage, access and TLS, Pod annotations, affinity policy, node selector, tolerations, security context, exporter, and Sentinel settings - each with its 2.0.0 boundary, including fields the schema accepts but the implementation ignores. Also documents the status fields, noting that `lastVersion` and `lastShardCount` are reconciliation bookkeeping rather than observed runtime state.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/architecture.mdx": {
+      "sha256": "17aee012ebc58333c5113726e0015250003880b04ac253ff35ff32d45f4c51ef",
+      "size": 5916,
+      "description": "Explains how one `Valkey` resource in `rds.valkey.buf.red/v1alpha1` is translated by the Operator into lower-level `Cluster`, `Failover`, and `Sentinel` resources and their StatefulSets and Services, with a table mapping each `spec.arch` value to the workloads it produces. Describes the four reconciliation layers from product API down to the data plane, then details the Cluster architecture (16,384 hash slots, 3-128 shards, 1-5 members per shard), the Failover architecture with its Sentinel deployment and role-selecting Services, and the Replica architecture without Sentinel. Includes an architecture selection matrix, guidance on storage and failure domains, and the meaning of each reported status phase.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/10-create-instance.mdx": {
+      "sha256": "b9d26027a865df8e56088a0eaed4cc9b80069a9bb419c95443e7412bee324d5a",
+      "size": 5882,
+      "description": "Guide to creating an instance with the high-level `Valkey` custom resource. Lists the decisions to make before creating - architecture, resource requests and limits, persistent storage, and redundancy - then tabulates each main specification field with its required decision, including the note that generated persistent volume claims always request `ReadWriteOnce` and that a StorageClass without a capacity derives twice the memory limit. Provides complete manifests for Cluster, Failover, and Replica instances, followed by verification: watching the phase reach Ready, inspecting child resources and Pods, reading the printed columns, and confirming topology with `CLUSTER INFO` or `INFO replication`.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/15-delete-instance.mdx": {
+      "sha256": "337b4f76855aea8cdb56021e365a9cb88c91b36d8bfd7986fa1d3c188c973fc6",
+      "size": 2662,
+      "description": "Guide to deleting an instance, framed as a destructive operation that is not a backup workflow. Tabulates the expected outcome for each resource class, recording that generated persistent volume claims carry no owner reference and therefore always remain after deletion regardless of `spec.storage.retainAfterDeleted`. Provides a pre-deletion checklist covering stopping application writes, completing an external export, and recording persistent volume claims and their reclaim policy, then the deletion command, commands to watch finalizer processing, and post-deletion checks for leftover claims, Secrets, and workloads. Warns against removing Operator finalizers to force deletion.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/20-user.mdx": {
+      "sha256": "869e9a7a2b57eed366dabe02d10a1540d39a83d558dde34fa3bc7e491b12705f",
+      "size": 6412,
+      "description": "Guide to managing Valkey access control list users through `User` resources backed by Kubernetes Secrets. States the requirements for password length, username characters, and the prohibition on granting access control list management to custom users, and describes the built-in `default` and `operator` accounts including the commands the passwordless default account is denied. Covers listing users and interpreting their phase, creating a password Secret without exposing the value, creating a user, testing authentication interactively, rotating a password through an overlapping multi-Secret transition, changing permissions to least privilege, deleting a custom user, and collecting failure diagnostics without disclosing Secret data.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/30-parameter.mdx": {
+      "sha256": "c64b7051935d6eda2f0863ec8e4dd04705af7a20fb42d4e741c14f72a57c1037",
+      "size": 6089,
+      "description": "Guide to setting Valkey server directives through `spec.customConfigs`, explaining that the Operator renders the configuration, compares it with the last applied version, and either issues `CONFIG SET` to ready nodes or triggers a rolling restart. Lists the checks to perform before changing parameters, shows hot updates and key removal by merge patch, enumerates the restart-required directives, and gives the full Operator-owned forbidden list including credential and TLS passphrase directives, noting that filtering is case-insensitive on every configuration path. Covers Sentinel monitor settings and their unvalidated passthrough, and verification with `CONFIG GET`, including that credential values are redacted on the delivered images.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/40-accessmethod.mdx": {
+      "sha256": "b6ae72b33bdb3a8a4421c4521ffb48f34551bcef2543000b64dc59e0ccfc8bee",
+      "size": 5398,
+      "description": "Guide to configuring instance access under `spec.access`. Compares the ClusterIP, NodePort, and LoadBalancer Service types and explains that the Cluster bootstrap Service stays ClusterIP while the requested type applies to generated per-Pod Services. Advises leaving fixed ports unset because the schema and runtime parser formats conflict, shows how to switch access type, gives the in-cluster Service names for each architecture, and covers the single-stack Internet Protocol family preference. Details enabling TLS through cert-manager, the generated `Certificate` and Secret, the requirement for a trusted client certificate, and the certificate subject alternative name boundary that makes redirected Cluster connections unverifiable.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/50-update.mdx": {
+      "sha256": "32e6ed0685ef67ebbe280bd84ba8a23d7f29399515725f0dadeba05a239ab619",
+      "size": 2884,
+      "description": "Guide to updating and scaling an instance by changing the owning `Valkey` resource rather than its generated children. Shows merge patches that scale Cluster shards, change the total member count per shard for any architecture, and change compute resources for both requests and limits, with the phases to expect and the commands to watch slot progress. Notes that the member field counts total members rather than replicas beyond a primary, and identifies the changes needing special handling: server version through the upgrade procedure, architecture as immutable, storage class and volume size as storage-platform operations, and one change at a time.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/60-scheduling.mdx": {
+      "sha256": "1013cbe01568907a5618e357b897bb64669347ae87e198d380d90c1bb9ab99de",
+      "size": 3483,
+      "description": "Guide to the Kubernetes scheduling controls exposed by the high-level API. Tabulates the four affinity policy values against their implemented behaviour, recording that the two required policies both use a shard-local selector, that the `CustomAffinity` literal does not activate the Cluster builder's custom branch, and that for an existing Cluster instance the reconcile path preserves current StatefulSet affinity so changes reach only later-created workloads. Shows patching node selectors and tolerations and how an Operator-created Sentinel inherits them, explains the separate Failover and Replica affinity behaviour with a custom affinity example, and gives commands to verify placement and diagnose Pending Pods.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/75-monitor.mdx": {
+      "sha256": "033c195a48da3991c3bc3803c788c5d5266012beb33be87715d8e1778260a0f5",
+      "size": 2622,
+      "description": "Guide to instance monitoring through the `redis_exporter` sidecar, which listens on port 9121 and serves `/metrics`. Shows how to size the exporter or disable it, and how to verify its health by port-forwarding the Cluster instance Service or the Failover headless metrics Service, noting that the latter exists even when the exporter is disabled because it also governs the data StatefulSet. Explains that the shipped ServiceMonitor selects Operator metrics rather than Valkey data-plane Services, so a scrape configuration must be created and verified separately, and that the exporter resolves its credentials from a Kubernetes Secret rather than an environment variable.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/80-log.mdx": {
+      "sha256": "a185863a58ba0c6c90d9dd4620a7ea6d37cdd2982f773583a8eb638842a928a3",
+      "size": 1998,
+      "description": "Guide to inspecting logs and Events with Kubernetes CLI commands, since the product provides no integrated log viewer. Recommends starting with the instance status message and warning Events, which usually identify admission, scheduling, certificate, Service, storage, or reconciliation failures before container logs are needed. Gives commands for data Pod logs including the previous container instance after a restart, the exporter sidecar, the `agent` sidecar that performs in-Pod reconciliation tasks, Sentinel containers, and the Operator Deployment located by label. Lists what to include in a support case and warns against including Secret values or generated private keys.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/85-start-stop.mdx": {
+      "sha256": "f82b60a491bffd542eb0c0532718669faebd683580e4ab618d17b42cc32e7681",
+      "size": 1431,
+      "description": "Guide to pausing and resuming an instance through the `buf.red/pause-timestamp` Pod annotation, which reduces managed workload replicas to zero and makes the instance unavailable. Lists the safety requirements: stop clients and writes first, use persistent storage if data must survive Pod deletion, treat a pause as distinct from a backup, and avoid pausing during any other rolling operation. Shows the patch that sets a timestamp and the expected `Paused` phase, the commands confirming that Pods have terminated while persistent volume claims remain, and the null-valued merge patch that resumes the instance before reconnecting applications.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/90-restart.mdx": {
+      "sha256": "cddfbdf86063a2295d8e5747b3a122c2e72046e7650ca67e35ce5959664ef51d",
+      "size": 1683,
+      "description": "Guide to triggering a rolling restart by setting a new timestamp in the `kubectl.kubernetes.io/restartedAt` Pod annotation, which updates the workload template and replaces Pods; the value must parse as a timestamp and be later than the previously recorded one, so reusing or decreasing it requests nothing. Lists preconditions covering instance readiness, replica and quorum health, absence of concurrent operations, and verified data protection. Shows the patch and the commands to watch progress, then requires verifying connectivity, authentication, slot coverage or primary selection, replication, and metrics rather than trusting Pod timestamps. States that zero downtime is not guaranteed.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/functions/index.mdx": {
+      "sha256": "3e56afcf087473200fd5f2f0c38374ee4116be30c121de7c7af894eae239848f",
+      "size": 83,
+      "description": "Landing page for the feature guides section, rendering an auto-generated overview of the guides via the `<Overview>` component.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/how_to/20-cluster-scaling.mdx": {
+      "sha256": "8c601e47f73c488461042c410c283789439387b24588bbeabff5e46d303d8318",
+      "size": 4632,
+      "description": "Procedure for scaling Cluster shards between 3 and 128 by changing `spec.replicas.shards`, after which the Operator creates or removes shard workloads and rebalances the 16,384 hash slots. Covers the preconditions, the requirement that clients follow redirections, capacity planning for scale-up and scale-down without copying a memory coefficient from another product, and recording a baseline. Shows the scale-up and scale-down patches, warns against deleting workloads manually to accelerate migration, and gives commands to monitor the phase and slot movement. Verification requires `cluster_state:ok`, full slot assignment, expected topology, bound claims, and working application traffic.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/how_to/30-upgrade.mdx": {
+      "sha256": "afa423ec1b6151ba8fa0bece27b4647f6391c7ec25cf991f8f78a7659d364100",
+      "size": 3596,
+      "description": "Procedure for upgrading the Valkey server line of an instance by increasing `spec.version`, which the validating webhook permits only in the forward direction. Warns that the source proves only downgrade rejection and defines no tested source-to-target matrix, which must come from release validation. Lists preconditions covering instance readiness, external backup, application and module compatibility, configuration directives changed by the target version, and scheduling capacity, then shows recording the current state, applying the patch, and watching Pod replacement. Verification inspects every data Pod's image and `INFO server` output rather than trusting the recorded status version.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/how_to/40-cluster-slots-distribution.mdx": {
+      "sha256": "ea8bb2f2cca65b05a2cb294597644e49eaf414a6fd23d0d42600d0f957eb0acd",
+      "size": 3142,
+      "description": "Procedure for supplying an explicit initial hash-slot plan for a new Cluster through `spec.replicas.shardsConfig`, which the controller consumes only while the child resource has no initialized shard status, making it creation-only rather than a redistribution API. Lists the constraints: Cluster architecture only, one entry per shard, at least three entries, slot values from 0 through 16383 as individual values or inclusive ranges, and a union covering every slot exactly once. Provides a complete three-shard manifest, explains why a server-side dry run validates the plan only before first creation, and shows verification with `CLUSTER SHARDS` and `CLUSTER INFO`.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/how_to/access/10-failover.mdx": {
+      "sha256": "fa9142bfc80dcb4b5daa731fb09d4498864634c1ca69b1599f291502b18a70a4",
+      "size": 4998,
+      "description": "Guide to connecting clients to Failover and Replica instances through their role-selecting Services, where the read-write Service selects the current primary and the read-only Service selects replicas. Shows how to discover endpoints and EndpointSlices rather than constructing names in automation, gives the stable in-cluster DNS names, and demonstrates testing both endpoints with interactive authentication and a disposable key. Explains that the read-only endpoint can be empty or stale and must not be used for read-after-write consistency. Covers TLS with a trusted client identity and the exact certificate names, external access through LoadBalancer and NodePort, and the client behaviour required around primary transitions.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/how_to/access/20-cluster.mdx": {
+      "sha256": "9ef02c146e8dfa33d5340e55db550696994c0c942fa781efe13317e76ecc3e4f",
+      "size": 5103,
+      "description": "Guide to connecting clients to a Cluster instance, which partitions keys across 16,384 hash slots and requires a client that discovers topology and follows `MOVED` and `ASK` redirections. Shows discovering Services and observed nodes, connecting with a Cluster-aware CLI, and using hash tags to keep multi-key operations within one slot, then verifying topology with `CLUSTER INFO`, `CLUSTER NODES`, and `CLUSTER SHARDS`. Documents the unresolved TLS limitation whereby announced per-Pod Service endpoints are absent from the generated certificate, so a client performing hostname verification can fail after redirection despite a successful bootstrap. Covers external access and application-client requirements.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/how_to/access/index.mdx": {
+      "sha256": "65fea5efe84ae138fada26b5663343871aa87ba676ed7cb70bf0a6cf51561cdd",
+      "size": 54,
+      "description": "Landing page for the client connection guides, rendering an auto-generated overview of the per-architecture connection procedures.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/how_to/index.mdx": {
+      "sha256": "37f1ead8d088f993d026018697a91eb6061d8589a9a47bda9133829cc1b0a60b",
+      "size": 82,
+      "description": "Landing page for the how-to section, rendering an auto-generated overview of the operational guides via the `<Overview>` component.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/index.mdx": {
+      "sha256": "31a0125363af9bfae0600d518245b18b9e12c0500f59696b84f44b0f57756ebb",
+      "size": 124,
+      "description": "Top-level navigation entry point for the English documentation set, rendering an auto-generated overview of child pages via the `<Overview>` component.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/installation.mdx": {
+      "sha256": "b130189c398a2783d205927890210e42b174320d50679584e77b7924d0ecc4b7",
+      "size": 5038,
+      "description": "Installation guide for the Alauda Cache Service E2 version 2.0.0 product package using the CLI workflow supplied for the target Alauda Container Platform environment. Lists prerequisites including cluster permissions for custom resource definitions and admission webhooks, image access, a StorageClass, cert-manager, and a Prometheus-compatible scraper. Provides preflight commands for connectivity, permissions, and storage, then verification steps confirming that the five custom resource definitions are established, that the installed schema admits the supported 9.1 version enum, that the Operator Deployment is available, and that webhooks and their certificates exist. Notes that a stale packaged schema omitting 9.1 is a packaging defect.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/intro.mdx": {
+      "sha256": "7d6597ed36432d8f2c7aa566ab5e1b80d3490760112efeac907d132c353d6850",
+      "size": 4141,
+      "description": "Introduces Alauda Cache Service E2, which deploys and operates Valkey instances on Kubernetes through declarative custom resources reconciled by the Valkey Operator. States that the product is CLI-only with no Web Console, lists the supported Valkey server lines 7.2, 8.1, and 9.1 with their `spec.version` values, and warns that 8.0 and 9.0 remain in the schema enum without being supported. Compares the Cluster, Failover, and Replica architectures with their minimum production shapes, explains that `replicasOfShard` is a legacy name for total member count, and enumerates implemented capabilities including scaling, rolling upgrades, ACL users, Service types, TLS, persistent storage, exporter metrics, and hardened credential handling. Closes with the responsibility boundary: no backup, restore, or disaster recovery, and asynchronous replication caveats.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/lifecycle_policy.mdx": {
+      "sha256": "e64fb9b546ccac7da2ae876bbcebce8661ed9b49f79496b577ef8fb1fbb21d41",
+      "size": 3381,
+      "description": "Separates published product facts from lifecycle information not yet established for Alauda Cache Service E2. Tabulates the 2.0.0 baseline, noting that release date, end of full support, end of maintenance, and the platform compatibility matrix are unpublished. Distinguishes four version dimensions - product version, API version, server line, and container image - with the command or inspection that reveals each. States the supported-version rule for 7.2, 8.1, and 9.1 with inspected patch baselines 7.2.14, 8.1.9, and 9.1.1, warns that `status.lastVersion` is controller bookkeeping rather than runtime proof, and lists the release-specific inputs required before a production rollout.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/limitations.mdx": {
+      "sha256": "8c00abd3283c37bd3f556b894d3dab1a1cddf0ee483ce66ab0acd410c59b6060",
+      "size": 6266,
+      "description": "Catalogues the boundaries of the 2.0.0 baseline: no Web Console, support restricted to Valkey 7.2, 8.1, and 9.1 despite a broader schema enum, and no backup, restore, or disaster recovery. Documents verified implementation defects including the unusable fixed NodePort format, `spec.storage.retainAfterDeleted` having no effect so persistent volume claims always remain after deletion, `spec.storage.accessMode` being ignored in favour of `ReadWriteOnce`, Cluster anti-affinity policies applying only within a shard, and Cluster affinity changes reaching only later-created StatefulSets. Also covers the TLS certificate and client-certificate boundary, unavailable modules, configuration filtering behaviour, and the monitoring integration the shipped ServiceMonitor does not provide.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/release_notes.mdx": {
+      "sha256": "cdcbd7a61e6a656ff1c1440cb8c3b31ea8b27103d23e39cc8a4979799d4c5f66",
+      "size": 6373,
+      "description": "Release notes for version 2.0.0, listing the supported Valkey lines with their inspected image-source patch baselines, the verified feature scope, and the API and architecture contract including the `rds.valkey.buf.red/v1alpha1` `Valkey` kind and its shard and member ranges. Records operational changes to resource validation, downgrade rejection, exporter defaults, pause and restart annotations, and cert-manager requirements, then details the credential-protection hardening: hashed ACL passwords, encrypted configuration credentials, redacted `CONFIG GET` output, exporter Secret resolution, memory-backed Sentinel configuration, and Pod Security Admission restricted contexts. Closes with excluded capabilities and the known compatibility boundaries carried into this release.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/trouble_shooting/10-instance-not-ready.mdx": {
+      "sha256": "d697cb0c1ab5e34688815e897469e58046c57bce6a70d94691e82198c8e9daef",
+      "size": 5350,
+      "description": "Diagnostic procedure for an instance that remains Initializing, Rebalancing, or Failed, or whose Pods and Services are unavailable. Begins by preserving state rather than restarting or editing child resources, then reproduces admission failures with a server-side dry run and tabulates common validation boundaries and their checks, including that an oversized shard count fails late on the child resource rather than at admission. Works through unschedulable Pods and the anti-affinity node requirements per architecture, pending persistent volume claims, TLS and issuer resources, container and Operator logs, and topology health, closing with the contents of an escalation package.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/trouble_shooting/20-large-key-analysis.mdx": {
+      "sha256": "93715e83298e3933dc59546b97e5b1f59559acf5ddfbcbf9abfc1a05161a6ac1",
+      "size": 3124,
+      "description": "Procedure for investigating key sizes with `valkey-cli --bigkeys` when a latency, memory, network, persistence, or slot-migration investigation needs evidence, since the Operator provides no integrated large-key report. Explains the operational impact of scanning the keyspace and the precautions: run during lower traffic, use a dedicated least-privilege inspection account, keep passwords off the command line, and stop if service indicators degrade. Shows the scan with and without TLS, notes that the interval option sleeps only every hundred scan cycles, and explains that Cluster coverage requires scanning each current primary. Closes with how to interpret results and prefer application-level remediation.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/trouble_shooting/index.mdx": {
+      "sha256": "a40b14454992dc26c736f69f5e35b18025f62ed92c9cb35475aa19c6e7b89609",
+      "size": 93,
+      "description": "Landing page for the troubleshooting section, rendering an auto-generated overview of the diagnostic guides via the `<Overview>` component.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    },
+    "docs/en/upgrade.mdx": {
+      "sha256": "23f7b5d9df9d90f3f868d1200f9fefc45ea38c683ccd66d5485017bfd628d981",
+      "size": 4396,
+      "description": "Procedure for upgrading the Alauda Cache Service E2 package and Valkey Operator, distinct from upgrading the Valkey server line of an existing instance. Covers prerequisites such as confirming a supported upgrade path, verifying that every instance is Ready with no operation in progress, completing external data protection, and recording specifications without exporting Secret values. Provides commands to record current state, apply the release's approved CLI package workflow, and watch the Operator roll out. Verification confirms established custom resource definitions, expected images, instances returning to Ready, and working application traffic. Warns against rolling back the Operator image or schemas independently.",
+      "generation_method": "ai_agent_reading",
+      "updated_at": "2026-08-12T07:09:47Z"
+    }
+  }
+}
