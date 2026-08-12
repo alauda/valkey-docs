@@ -3,10 +3,10 @@ weight: 11
 i18n:
   title:
     zh: 发版说明
-title: Release notes
+title: Release Notes
 ---
 
-# Release notes
+# Release Notes
 
 ## 2.0.0 — next major release
 
@@ -15,22 +15,28 @@ matrix have not been established in this documentation baseline.
 
 ### Supported Valkey versions
 
-- Valkey 7.2
-- Valkey 8.1
-- Valkey 9.1
+| Supported line | Inspected image-source patch baseline |
+| --- | --- |
+| Valkey 7.2 | 7.2.14 |
+| Valkey 8.1 | 8.1.9 |
+| Valkey 9.1 | 9.1.1 |
+
+The delivered package image tags and digests remain authoritative for the exact
+patch build. Custom resource definition (CRD) enum values for 8.0 and 9.0 do
+not place those lines in the 2.0.0 support range.
 
 ### Verified feature scope
 
 - Cluster, Failover, and Replica architectures;
 - declarative lifecycle management through Kubernetes APIs;
-- online topology scaling and Cluster slot rebalancing;
+- in-place topology changes and Cluster slot rebalancing;
 - rolling upgrades, configuration-driven restarts, and explicit rolling restart;
 - access control list (ACL) user management with Kubernetes Secrets;
 - ClusterIP, NodePort, and LoadBalancer access;
 - IPv4 and IPv6 single-stack Services;
-- optional TLS issued through cert-manager;
+- optional cert-manager-issued mutual TLS (mTLS);
 - persistent storage and Kubernetes scheduling controls;
-- Valkey exporter sidecar metrics.
+- `redis_exporter` sidecar metrics.
 
 ### API and architecture
 
@@ -48,15 +54,37 @@ matrix have not been established in this documentation baseline.
 
 - CPU and memory requests and limits are validated; equal values avoid the
   resource warning emitted by the admission webhook.
-- Server downgrades are rejected. Use the supported forward path `7.2` → `8.1`
-  → `9.1` unless release-specific testing documents a skipped-line upgrade.
+- Server downgrades are rejected. The source does not define or enforce a
+  supported forward source-to-target matrix; obtain that matrix from release
+  validation before any upgrade.
 - The exporter is enabled by default unless `spec.exporter.disable` is true.
 - Pause/resume and explicit rolling restart are driven through Pod annotations
   on the high-level resource.
 - TLS uses cert-manager and requires an existing `Issuer` or `ClusterIssuer`.
-- The default operator installation also uses cert-manager for admission webhook
+- The default Operator installation also uses cert-manager for admission webhook
   certificates; an external webhook certificate path must provide the required
   certificate authority (CA) bundle explicitly.
+
+### Credential protection
+
+The 2.0.0 baseline hardens how instance credentials are stored and exposed:
+
+- Access control list (ACL) files and live `ACL SETUSER` updates carry SHA-256
+  password hashes instead of plaintext passwords; clients authenticate with
+  their existing passwords unchanged.
+- Replication and Sentinel credentials that must stay recoverable are written
+  into rendered configuration encrypted with a per-instance key. The Operator
+  manages that key in a dedicated Secret; only the key, never a password
+  Secret, is mounted into instance containers.
+- On the delivered server images, `CONFIG GET` reports a set `requirepass` or
+  `primaryauth` value as a fixed redaction placeholder.
+- The exporter no longer receives the password through an environment
+  variable; it resolves the referenced Secret through the Kubernetes API.
+- Sentinel keeps its rewritten configuration on a memory-backed volume rather
+  than on disk.
+- Generated Pod and container security contexts satisfy the Kubernetes Pod
+  Security Admission `restricted` profile while preserving values supplied in
+  `spec.securityContext`.
 
 ### Operational interface
 
@@ -65,7 +93,7 @@ Version 2.0.0 is CLI-only and does not include a Web Console. Use `kubectl` and
 
 ### Excluded capabilities
 
-Disaster recovery is not supported. The operator also does not implement
+Disaster recovery is not supported. The Operator also does not implement
 integrated backup/restore, cross-cluster replication or failover, integrated
 large-key inspection reports, or parameter templates. See
 [Current limitations](./limitations.mdx).
@@ -73,15 +101,32 @@ large-key inspection reports, or parameter templates. See
 ### Known compatibility boundaries
 
 - The custom resource definition (CRD) retains `8.0` and `9.0` enum values, but
-  the product package does not supply those server lines.
+  the Operator image map does not select those unsupported server lines.
+- The API source and canonical generated CRD include 9.1, but the inspected Helm
+  Chart CRD copy is stale and omits it. Release packaging must install the
+  canonical schema before 9.1 can be admitted.
+- Cluster `AntiAffinity` has the same shard-local selector scope as
+  `AntiAffinityInShard`, and Cluster `CustomAffinity` is affected by an internal
+  constant mismatch. The Cluster reconcile path also preserves existing
+  StatefulSet affinity on update, so affinity changes reach only StatefulSets
+  created afterward. Do not rely on the broader schema descriptions; verify
+  actual placement.
+- Generated TLS requires client certificates by default. Its certificate
+  subject alternative names do not cover arbitrary external addresses, every
+  Kubernetes DNS suffix, or the per-Pod Service endpoints that Cluster announces
+  to clients. A bootstrap TLS success is not proof that redirected Cluster
+  connections validate.
+- `spec.modules` does not install modules, and the standard inspected server
+  images contain no module files.
 - The schema and runtime parser disagree on the fixed `spec.access.ports`
   format. Leave it unset for automatic NodePort allocation unless the delivered
   build documents a validated format.
-- Persistent volume claim (PVC) retention through
-  `spec.storage.retainAfterDeleted` does not have a clear enough implementation
-  guarantee for destructive workflows. Inspect and protect required PVCs before
-  deletion.
-- The shipped ServiceMonitor targets operator metrics, not Valkey data-plane
+- `spec.storage.retainAfterDeleted` has no effect in the inspected baseline:
+  generated persistent volume claims (PVCs) carry no owner reference to the
+  instance and remain after deletion. Inspect PVCs before deleting an instance
+  and remove leftovers explicitly. `spec.storage.accessMode` is also not
+  applied; generated PVCs always request `ReadWriteOnce`.
+- The shipped ServiceMonitor targets Operator metrics, not Valkey data-plane
   Services. Configure and verify data-plane scraping separately.
 
 ### Before adopting 2.0.0

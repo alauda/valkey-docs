@@ -27,11 +27,20 @@ container logs are needed.
 ```bash
 kubectl -n <namespace> logs <pod-name> -c valkey --tail=200
 kubectl -n <namespace> logs <pod-name> -c valkey --previous --tail=200
+# Run only when the exporter sidecar is enabled.
 kubectl -n <namespace> logs <pod-name> -c exporter --tail=200
 ```
 
 Use `--previous` after a container restart. For an active incident, add `--follow`
 and a bounded `--since` value rather than downloading an unbounded log.
+
+Cluster data Pods and Sentinel Pods also run an `agent` sidecar container that
+performs in-Pod reconciliation tasks. Include its logs when diagnosing
+topology, announcement, or credential problems:
+
+```bash
+kubectl -n <namespace> logs <pod-name> -c agent --tail=200
+```
 
 ## Sentinel logs
 
@@ -44,7 +53,7 @@ kubectl -n <namespace> logs <sentinel-pod> -c sentinel --tail=200
 
 ## Operator logs
 
-Locate the operator Deployment instead of assuming its namespace:
+Locate the Operator Deployment instead of assuming its namespace:
 
 ```bash
 kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator
@@ -53,5 +62,5 @@ kubectl -n <operator-namespace> logs deployment/<operator-deployment> \
 ```
 
 When opening a support case, include the `Valkey` YAML with Secret data removed,
-related Events, Pod states, relevant container logs, operator logs, and the exact
+related Events, Pod states, relevant container logs, Operator logs, and the exact
 time range. Never include Secret values or generated TLS private keys.

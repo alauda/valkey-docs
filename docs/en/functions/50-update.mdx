@@ -74,16 +74,17 @@ kubectl -n default patch valkey valkey-cluster --type=merge -p '
 ```
 
 Verify that the target nodes have enough schedulable resources before applying
-the patch. Watch Pods and Events for `Pending`, eviction, or OOM termination.
+the patch. Watch Pods and Events for `Pending`, eviction, or memory-limit
+termination.
 
 ## Changes that need special handling
 
 - Change `spec.version` only with the [Upgrade Valkey](../how_to/30-upgrade.mdx)
   procedure. Downgrades are rejected.
 - Treat `spec.arch` as immutable. Recreate and migrate data when changing
-  architecture; the operator has no documented in-place conversion workflow.
-- Treat `storageClassName`, PVC access mode, and existing PVC size as
-  storage-platform operations. The operator does not implement a general volume
-  migration workflow.
+  architecture; the Operator has no documented in-place conversion workflow.
+- Treat `storageClassName`, persistent volume claim (PVC) access mode, and
+  existing PVC size as storage-platform operations. The Operator does not
+  implement a general volume migration workflow.
 - Apply one topology, version, storage, or access change at a time and wait for
   `Ready` before the next change.

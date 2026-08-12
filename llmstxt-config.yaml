@@ -1,4 +1,4 @@
-project_name: "Alauda Build of Valkey Documentation"
+project_name: "Alauda Cache Service E2 Documentation"
 summary: "CLI-focused documentation for deploying and operating Valkey on Kubernetes."
 body: |
   This index covers user-facing documentation under docs/en/ for installing,

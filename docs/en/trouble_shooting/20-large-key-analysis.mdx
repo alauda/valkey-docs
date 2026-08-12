@@ -23,8 +23,10 @@ consume server CPU and network bandwidth. Large collection cardinality checks
 can also be expensive.
 
 - Run during lower traffic and monitor latency, CPU, memory, and network usage.
-- Use a read-only application account with only the commands and key patterns
-  required for the inspection.
+- Use a dedicated least-privilege inspection account with only `SCAN` and the
+  type and size commands required by the CLI. Validate the exact rule against
+  the selected server line; a normal read-only application account may be too
+  broad or may lack a required introspection command.
 - Do not put passwords on the command line or in shell history.
 - Stop the scan if service indicators degrade.
 - Treat results as a point-in-time observation; the keyspace can change during
@@ -34,19 +36,21 @@ can also be expensive.
 
 ```bash
 valkey-cli -h <host> -p 6379 --user <username> --askpass \
-  --bigkeys --i 0.1
+  --bigkeys -i 0.1
 ```
 
-The interval reduces scan rate by adding a delay per scan cycle; it does not make
-the command impact-free. Save only the non-sensitive output required for the
-investigation.
+With `--bigkeys`, the `-i 0.1` option sleeps for 0.1 seconds after each 100 scan
+cycles; it does not delay every cycle and does not make the command impact-free.
+Output can include key names, so treat it as sensitive and save only what the
+investigation requires.
 
 With TLS:
 
 ```bash
-valkey-cli --tls --cacert valkey-ca.crt \
+valkey-cli --tls --cacert <ca-file> \
+  --cert <client-certificate-file> --key <client-key-file> \
   -h <host> -p 6379 --user <username> --askpass \
-  --bigkeys --i 0.1
+  --bigkeys -i 0.1
 ```
 
 ## Cluster coverage

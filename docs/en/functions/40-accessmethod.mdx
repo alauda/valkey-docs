@@ -15,8 +15,14 @@ Configure access under `spec.access` on the high-level `Valkey` resource.
 | `serviceType` | Use |
 | --- | --- |
 | `ClusterIP` | Clients running inside the Kubernetes cluster. This is the default. |
-| `NodePort` | External clients that can reach Kubernetes node addresses. The operator creates per-Pod Services needed for topology announcements. |
-| `LoadBalancer` | External clients through a load-balancer implementation. The operator creates per-Pod Services where direct topology addresses are required. |
+| `NodePort` | External clients that can reach Kubernetes node addresses. The Operator creates per-Pod Services needed for topology announcements. |
+| `LoadBalancer` | External clients through a load-balancer implementation. The Operator creates per-Pod Services where direct topology addresses are required. |
+
+For Cluster architecture, the same-name bootstrap Service remains `ClusterIP`;
+the requested external type is used by generated per-Pod Services. For Failover
+and Replica, the read-write and read-only role Services use the requested type,
+and external access can also create per-Pod Services. Always inspect the
+generated Services instead of assuming one uniform Service shape.
 
 For NodePort in 2.0.0, leave `spec.access.ports` unset unless the delivered build
 documents a validated format. Kubernetes then allocates ports. The source
@@ -58,16 +64,17 @@ Discover the actual Services instead of constructing names in automation:
 kubectl -n default get service -l buf.red/name=valkey-failover -o wide
 ```
 
-## IP family
+## Internet Protocol family
 
-Set `spec.access.ipFamilyPrefer` to `IPv4` or `IPv6`. The generated Services use a
-single-stack family policy. Ensure the cluster, nodes, load balancer, DNS, and
-clients support the selected family before changing an existing instance.
+Set `spec.access.ipFamilyPrefer` to Internet Protocol (IP) version 4 (`IPv4`) or
+version 6 (`IPv6`). The generated Services use a single-stack IP family policy.
+Ensure the cluster, nodes, load balancer, DNS, and clients support the selected
+family before changing an existing instance.
 
 ## Enable TLS
 
 TLS requires cert-manager and an existing `Issuer` or `ClusterIssuer`. The
-operator creates a cert-manager `Certificate` and stores the issued material in
+Operator creates a cert-manager `Certificate` and stores the issued material in
 `<instance-name>-tls`.
 
 ```bash
@@ -92,19 +99,42 @@ kubectl -n default get secret valkey-cluster-tls
 kubectl -n default get valkey valkey-cluster -w
 ```
 
-Use the issued CA with `valkey-cli`:
+The generated Valkey arguments retain upstream client-certificate
+authentication. A TLS client therefore needs the trusted certificate authority
+(CA), a trusted client certificate, and its private key. The instance Secret
+must contain `ca.crt`, `tls.crt`, and `tls.key`; confirm that the selected
+cert-manager issuer populates all three keys.
+
+Use a client identity issued by the same trusted CA. The following form avoids
+putting an access control list (ACL) password on the command line, but it checks
+only the Cluster bootstrap connection:
 
 ```bash
-kubectl -n default get secret valkey-cluster-tls \
-  -o jsonpath='{.data.ca\.crt}' | base64 --decode > valkey-ca.crt
-valkey-cli -c --tls --cacert valkey-ca.crt \
-  -h valkey-cluster.default.svc -p 6379 PING
+valkey-cli -c --tls \
+  --cacert <ca-file> --cert <client-certificate-file> --key <client-key-file> \
+  -h valkey-cluster.default -p 6379 --user <username> --askpass PING
 ```
 
-Protect the extracted CA file and remove it when it is no longer needed. For ACL
-authentication, add `--user <username> --askpass`.
+`valkey-cluster.default` is present in the Operator-generated Cluster
+certificate for this example; `valkey-cluster.default.svc` is not. Inspect
+`Certificate.spec.dnsNames` and use an exact listed name. The generated Secret
+contains the server identity used internally by the Operator; do not distribute
+its private key to applications as a general client credential. Issue and
+distribute dedicated client certificates through an approved certificate
+process.
+
+The generated certificate does not include arbitrary NodePort or LoadBalancer
+addresses. For Cluster, it also omits the per-Pod Service names or addresses
+announced for redirection. A successful bootstrap `PING` therefore does not prove
+that a Cluster-aware client can validate redirected connections. Require a
+delivered build that aligns every announced endpoint with a certificate subject
+alternative name before production Cluster TLS use. Do not use `--insecure` as
+the workaround.
 
 For end-to-end endpoint discovery, authentication, TLS, and client behavior, see:
 
 - [Connect to Failover and Replica instances](../how_to/access/10-failover.mdx)
 - [Connect to a Cluster instance](../how_to/access/20-cluster.mdx)
+
+See the official [Valkey TLS documentation](https://valkey.io/topics/encryption/)
+for server and client certificate behavior.

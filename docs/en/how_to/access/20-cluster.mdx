@@ -10,7 +10,8 @@ title: Connect to a Cluster instance
 
 A Valkey Cluster partitions keys across 16,384 hash slots. The client must
 discover topology and follow `MOVED` and `ASK` redirections. A non-Cluster-aware
-client can connect to one node but fails when a command belongs to another node.
+client can connect to one node but exposes redirection errors to the application
+when a command belongs to another node.
 
 For protocol-level behavior, see the official
 [Valkey Cluster specification](https://valkey.io/topics/cluster-spec/).
@@ -36,7 +37,7 @@ Use `-c` to follow Cluster redirections:
 valkey-cli -c -h valkey-cluster.default.svc -p 6379 PING
 ```
 
-With ACL authentication:
+With access control list (ACL) authentication:
 
 ```bash
 valkey-cli -c -h valkey-cluster.default.svc -p 6379 \
@@ -66,7 +67,7 @@ kubectl -n default exec <ready-cluster-pod> -c valkey -- \
 kubectl -n default exec <ready-cluster-pod> -c valkey -- \
   valkey-cli CLUSTER NODES
 kubectl -n default exec <ready-cluster-pod> -c valkey -- \
-  valkey-cli CLUSTER SLOTS
+  valkey-cli CLUSTER SHARDS
 ```
 
 Confirm `cluster_state:ok`, full slot assignment, expected primary and replica
@@ -75,14 +76,24 @@ counts, and reachable advertised addresses.
 ## Use TLS
 
 ```bash
-valkey-cli -c --tls --cacert valkey-ca.crt \
-  -h valkey-cluster.default.svc -p 6379 \
+valkey-cli -c --tls --cacert <ca-file> \
+  --cert <client-certificate-file> --key <client-key-file> \
+  -h valkey-cluster.default -p 6379 \
   --user app --askpass PING
 ```
 
-Every advertised node hostname or address followed by the client must be
-reachable and valid for the issued certificate. Test redirections, not only the
-bootstrap connection.
+The generated server requires a trusted client certificate by default. The
+bootstrap name `valkey-cluster.default` is in the generated certificate for this
+example; the `.svc` form is not. This command proves only that the bootstrap
+connection can authenticate.
+
+The Cluster announces generated per-Pod Service addresses for node connections,
+but the generated certificate does not include those Service names or addresses.
+Consequently, a client that performs normal hostname verification can fail after
+`MOVED` or `ASK`, even when bootstrap `PING` succeeds. Treat this as an unresolved
+2.0.0 Cluster TLS limitation. Require a delivered build that aligns every
+announced endpoint with a certificate subject alternative name, and test a key
+on every shard. Do not use `--insecure` as the workaround.
 
 ## External access
 
@@ -98,6 +109,10 @@ address. For `NodePort`, ensure the client can reach the selected node addresses
 and all allocated ports. A single reachable bootstrap endpoint is insufficient
 if redirected node endpoints are blocked.
 
+The generated certificate also does not cover arbitrary external addresses, so
+the Cluster TLS limitation above applies to external access as well as the
+in-cluster announced topology.
+
 Leave `spec.access.ports` unset for 2.0.0 unless the delivered build documents a
 validated fixed-port format. Kubernetes then allocates NodePorts.
 
@@ -112,3 +127,11 @@ validated fixed-port format. Kubernetes then allocates NodePorts.
 - Keep multi-key operations within one hash slot or redesign the operation.
 - Revalidate topology behavior after scaling, failover, access changes, or
   certificate rotation.
+
+Cluster replication is asynchronous, and the protocol permits acknowledged
+write loss in documented failure windows. See the official [Cluster
+specification](https://valkey.io/topics/cluster-spec/), [`CLUSTER SHARDS`
+reference](https://valkey.io/commands/cluster-shards/), [TLS
+documentation](https://valkey.io/topics/encryption/), and [client
+catalog](https://valkey.io/clients/). Verify the selected library's behavior in
+its own documentation and tests.

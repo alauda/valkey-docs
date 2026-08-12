@@ -15,7 +15,8 @@ major release, 2.0.0, supports only `7.2`, `8.1`, and `9.1` in `spec.version`.
 
 - Choose `cluster`, `failover`, or `replica` architecture.
 - Set CPU and memory requests and limits. Equal request and limit values avoid a
-  validating-webhook warning and provide predictable memory behavior.
+  validating-webhook warning; size the exporter sidecar separately when it is
+  enabled.
 - Configure persistent storage for data that must survive Pod recreation.
 - Use at least two members per shard for primary-replica redundancy.
 
@@ -28,10 +29,10 @@ major release, 2.0.0, supports only `7.2`, `8.1`, and `9.1` in `spec.version`.
 | `spec.replicas.shards` | Use 3–128 for Cluster and exactly 1 for Failover or Replica. |
 | `spec.replicas.replicasOfShard` | Total data-member count: 1–5. Use at least 2 for primary-replica redundancy. |
 | `spec.resources` | Set CPU and memory requests and limits; equal values avoid a webhook warning. |
-| `spec.storage` | Omit for ephemeral storage, or select capacity, StorageClass, and access mode. |
-| `spec.access` | Select ClusterIP, NodePort, or LoadBalancer and the IP family; optionally enable TLS. |
+| `spec.storage` | Omit for ephemeral storage, or set capacity and StorageClass. Generated persistent volume claims always request the `ReadWriteOnce` access mode. |
+| `spec.access` | Select ClusterIP, NodePort, or LoadBalancer and the Internet Protocol (IP) family; optionally enable TLS. |
 | `spec.affinityPolicy` | Choose a policy that the available node count can satisfy. |
-| `spec.customConfigs` | Set only directives that the operator does not own or forbid. |
+| `spec.customConfigs` | Set only directives that the Operator does not own or forbid. |
 | `spec.exporter` | Enabled by default; size the sidecar or explicitly disable it. |
 
 If `storageClassName` is specified without `capacity`, the webhook derives a
@@ -65,7 +66,6 @@ spec:
   storage:
     storageClassName: standard
     capacity: 10Gi
-    accessMode: ReadWriteOnce
   access:
     serviceType: ClusterIP
   exporter:
@@ -110,7 +110,6 @@ spec:
   storage:
     storageClassName: standard
     capacity: 10Gi
-    accessMode: ReadWriteOnce
   access:
     serviceType: ClusterIP
   sentinel:
@@ -160,7 +159,6 @@ spec:
   storage:
     storageClassName: standard
     capacity: 10Gi
-    accessMode: ReadWriteOnce
   access:
     serviceType: ClusterIP
   customConfigs:
@@ -180,7 +178,8 @@ Watch the high-level status until `PHASE` becomes `Ready`:
 kubectl -n default get valkey -w
 ```
 
-Then inspect the observed nodes, child resources, Pods, Services, and PVCs:
+Then inspect the observed nodes, child resources, Pods, Services, and persistent
+volume claims (PVCs):
 
 ```bash
 kubectl -n default get valkey valkey-cluster -o yaml
@@ -190,7 +189,7 @@ kubectl -n default describe valkey valkey-cluster
 ```
 
 If reconciliation fails, read `.status.message`, namespace Events, and the
-operator logs before changing the manifest.
+Operator logs before changing the manifest.
 
 The main `kubectl get valkey` columns are:
 

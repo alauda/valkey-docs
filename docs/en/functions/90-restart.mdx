@@ -8,9 +8,11 @@ title: Rolling restart
 
 # Rolling restart
 
-Set a new RFC 3339 timestamp in
+Set a new Request for Comments (RFC) 3339 timestamp in
 `spec.podAnnotations["kubectl.kubernetes.io/restartedAt"]` to trigger workload
-template updates and rolling Pod replacement.
+template updates and rolling Pod replacement. The value must parse as a timestamp
+and be later than the previously recorded value; reusing or decreasing it does
+not request a new restart.
 
 ## Before restarting
 
@@ -18,7 +20,8 @@ template updates and rolling Pod replacement.
 - Confirm every production Cluster shard has a replica, or that the Failover
   instance has a healthy replica and Sentinel quorum.
 - Stop concurrent scaling, upgrade, storage, access, and configuration changes.
-- Verify external data protection and current PVC health.
+- Verify external data protection and current persistent volume claim (PVC)
+  health.
 
 ## Trigger the restart
 
@@ -37,9 +40,10 @@ kubectl -n default get events --sort-by=.lastTimestamp
 ```
 
 Do not claim success from Pod timestamps alone. After the phase returns to
-`Ready`, verify connectivity, ACL authentication, Cluster slot coverage or the
+`Ready`, verify connectivity, access control list (ACL) authentication, Cluster
+slot coverage or the
 Failover primary, replication health, and exporter metrics.
 
-The operator uses rolling workload updates, but availability still depends on
+The Operator uses rolling workload updates, but availability still depends on
 topology, client retry behavior, Pod disruption, scheduling capacity, and the
 health of replicas. This procedure does not guarantee zero downtime.

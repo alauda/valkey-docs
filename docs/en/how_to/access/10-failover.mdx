@@ -39,7 +39,7 @@ actual Service names rather than constructing them in production automation.
 
 ## Test the write endpoint
 
-Without ACL authentication:
+Without access control list (ACL) authentication:
 
 ```bash
 valkey-cli -h rfr-valkey-failover-readwrite.default.svc -p 6379 PING
@@ -69,21 +69,30 @@ valkey-cli -h rfr-valkey-failover-readonly.default.svc -p 6379 \
 ```
 
 The read-only Service can have no endpoints when no replica is ready. Replication
-is asynchronous, so a replica can briefly return an older value.
+is asynchronous, so a replica can return an older value. During primary failure
+and promotion, an acknowledged write can also be absent from the promoted
+replica. Do not use this endpoint for read-after-write consistency.
 
 ## Use TLS
 
-When `spec.access.enableTLS` is true, obtain the trusted CA through the approved
-certificate-distribution process and add TLS options:
+When `spec.access.enableTLS` is true, obtain a trusted client identity through
+the approved certificate-distribution process. The generated server requires a
+trusted client certificate by default, so the certificate authority (CA) alone
+is insufficient:
 
 ```bash
-valkey-cli --tls --cacert valkey-ca.crt \
-  -h rfr-valkey-failover-readwrite.default.svc -p 6379 \
+valkey-cli --tls --cacert <ca-file> \
+  --cert <client-certificate-file> --key <client-key-file> \
+  -h rfr-valkey-failover-readwrite.default -p 6379 \
   --user app --askpass PING
 ```
 
-The certificate must be valid for the hostname used by the client. Do not use
-`--insecure` as a normal connection method.
+`rfr-valkey-failover-readwrite.default` is included in the generated certificate
+for this example; the `.svc` form is not. Inspect `Certificate.spec.dnsNames`
+and use an exact listed name. The instance TLS Secret contains a server private
+key used internally by the Operator; do not distribute that key as a general
+application client identity. Do not use `--insecure` as a normal connection
+method.
 
 ## External access
 
@@ -104,8 +113,14 @@ kubectl -n default get service rfr-valkey-failover-readwrite \
 kubectl get nodes -o wide
 ```
 
-Do not publish a fixed `spec.access.ports` example for 2.0.0: the inspected CRD
-schema and runtime parser use incompatible formats. Leave the field unset unless
+The generated certificate does not include the LoadBalancer ingress or
+Kubernetes node addresses. External TLS therefore needs a product-approved
+certificate path whose subject alternative names cover the client hostname; the
+high-level 2.0.0 API does not expose an arbitrary subject-alternative-name field.
+
+Do not publish a fixed `spec.access.ports` example for 2.0.0: the inspected
+custom resource definition (CRD) schema and runtime parser use incompatible
+formats. Leave the field unset unless
 the delivered build documents a validated format.
 
 ## Client behavior
@@ -116,3 +131,9 @@ the delivered build documents a validated format.
 - Retry only operations that are safe for the application's idempotency model.
 - Monitor replica health before sending production reads to the read-only
   endpoint.
+
+The consistency and failover boundaries above follow the official [Valkey
+replication](https://valkey.io/topics/replication/) and [Sentinel
+documentation](https://valkey.io/topics/sentinel/). Select a client from the
+[Valkey client catalog](https://valkey.io/clients/) and verify its retry and TLS
+behavior in that client's own documentation.

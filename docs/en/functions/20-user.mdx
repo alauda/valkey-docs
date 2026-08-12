@@ -2,13 +2,13 @@
 weight: 20
 i18n:
   title:
-    zh: ACL 用户
-title: Manage ACL users
+    zh: 管理访问控制列表用户
+title: Manage access control list users
 ---
 
-# Manage ACL users
+# Manage access control list users
 
-Valkey ACL users are represented by `User` resources in
+Valkey access control list (ACL) users are represented by `User` resources in
 `valkey.buf.red/v1alpha1`. Each custom user references one or more Kubernetes
 Secrets in the same namespace as the instance.
 
@@ -16,14 +16,27 @@ Secrets in the same namespace as the instance.
 
 - Create the `Valkey` instance before the `User` resource.
 - A password must be 8–32 characters and stored under the Secret key `password`.
-- Usernames must contain only letters, digits, and hyphens, with a maximum length
-  of 31 characters.
+- For compatibility with the Operator's username helper, use a non-empty name
+  containing only letters, digits, and hyphens, with a maximum length of 31
+  characters. The User admission webhook does not apply that helper check in the
+  inspected baseline, so an incompatible name can be admitted and fail when the
+  account is applied to Valkey.
 - Custom users cannot receive the `ACL` command. The webhook removes or denies
   ACL-management permission to prevent privilege escalation.
 
-The operator also maintains `default` and `operator` accounts for an instance.
+The Operator also maintains `default` and `operator` accounts for an instance.
 The `operator` account is reserved for reconciliation and must not be used by
-applications or modified manually.
+applications or modified manually. In the inspected baseline, the `default`
+account is generated without a password, and its ACL rule disallows the `acl`,
+`flushall`, `flushdb`, and `keys` commands. An application that needs one of
+those disallowed data commands must use a custom user whose rule grants it;
+ACL management itself cannot be granted.
+
+The webhook accepts an Operator-defined subset of Valkey access control list
+(ACL) rule syntax and command categories. Validate every rule with a server-side
+dry-run and then test allowed and denied commands against the selected server
+line; schema acceptance is not proof that a rule has the intended least
+privilege.
 
 ## List users
 
@@ -119,8 +132,9 @@ Edit the resource with:
 kubectl -n default edit user valkey-app
 ```
 
-The multi-Secret transition prevents an immediate cutover from breaking all
-clients.
+The multi-Secret transition provides an overlap window in which both passwords
+are applied. Verify both credentials during the window; reconciliation proceeds
+node by node and is not an atomic Cluster-wide transaction.
 
 ## Change permissions
 
@@ -144,7 +158,7 @@ that command and the webhook accepts the result.
 kubectl -n default delete user valkey-app
 ```
 
-The operator removes the account from ready Valkey nodes. The built-in `default`
+The Operator removes the account from ready Valkey nodes. The built-in `default`
 and `operator` users cannot be deleted while their instance exists.
 
 ## Failure handling
@@ -159,4 +173,8 @@ kubectl -n default get secret valkey-app-password \
 The last command checks only whether the key exists and does not print its value.
 Do not print, decode, log, or attach Secret data to a support case. If a user
 remains `Fail`, collect the `User` resource with Secret values omitted, the owning
-`Valkey` status, Events, and relevant operator logs.
+`Valkey` status, Events, and relevant Operator logs.
+
+For server-side ACL semantics, see the official [ACL
+documentation](https://valkey.io/topics/acl/) and [`ACL SETUSER` command
+reference](https://valkey.io/commands/acl-setuser/).

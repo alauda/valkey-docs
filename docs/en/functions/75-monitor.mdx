@@ -8,7 +8,7 @@ title: Monitor an instance
 
 # Monitor an instance
 
-The operator can inject a Valkey exporter sidecar. The exporter listens on port
+The Operator can inject a `redis_exporter` sidecar. The exporter listens on port
 `9121` and serves metrics at `/metrics`.
 
 ## Configure the exporter
@@ -59,6 +59,11 @@ kubectl -n default get service -l buf.red/name=valkey-failover
 kubectl -n default port-forward service/rfr-valkey-failover 9121:9121
 ```
 
+The Failover metrics Service exists even when the exporter is disabled, because
+it is also the headless governing Service of the data StatefulSet. Before
+treating the Service as a scrape target, verify that the selected Pods actually
+contain a ready `exporter` container and that `/metrics` responds.
+
 You can also inspect the sidecar directly:
 
 ```bash
@@ -68,10 +73,15 @@ kubectl -n default logs <pod-name> -c exporter --tail=200
 
 ## Integrate scraping
 
-The ServiceMonitor shipped with the operator selects operator metrics. It does
+The ServiceMonitor shipped with the Operator selects Operator metrics. It does
 not by itself scrape Valkey data-plane Services. Create a `ServiceMonitor`,
 `PodMonitor`, or equivalent scrape configuration that matches the Services in
 your environment, and verify target health in your monitoring system.
 
-When TLS and ACL are enabled, the exporter receives the operator-managed
-credentials and TLS files. Do not copy credentials into scrape configuration.
+When TLS and access control list (ACL) authentication are enabled, the Operator
+supplies the exporter with its ACL identity and TLS files, and the exporter
+resolves its password from the referenced Kubernetes Secret through the API
+rather than receiving it in an environment variable. Do not copy credentials
+into scrape configuration.
+The implementation uses `redis_exporter`; validate every required metric against
+the delivered exporter image and the selected Valkey line, especially 9.1.

@@ -11,15 +11,17 @@ title: Upgrade Valkey
 Upgrade by increasing `spec.version` on the owning `Valkey` resource. The
 validating webhook rejects version downgrades.
 
-The 2.0.0 product supports Valkey 7.2, 8.1, and 9.1. Use one supported line at a
-time (`7.2` → `8.1` → `9.1`) unless the delivered release notes explicitly
-validate a skipped-version path.
+The 2.0.0 product supports Valkey 7.2, 8.1, and 9.1. The source proves only that
+the webhook rejects a lower target version; it does not define a tested
+source-to-target matrix or prove that either sequential or skipped-line upgrades
+are safe. Obtain that matrix from the delivered release validation before
+changing a production instance.
 
 ## Before you begin
 
 1. Confirm the instance is `Ready` and no scale, restart, access, certificate,
    scheduling, or configuration change is running.
-2. Complete and verify an external backup or export. The operator has no
+2. Complete and verify an external backup or export. The Operator has no
    integrated backup or rollback controller.
 3. Check application and module compatibility with the target Valkey line.
 4. Review `spec.customConfigs` for directives removed or changed by the target
@@ -65,7 +67,7 @@ Do not apply another change while Pods are being replaced or the phase is not
 
 ## Verify the result
 
-Confirm the desired and observed version and inspect every server Pod:
+Read the desired and last recorded values, then inspect every server Pod:
 
 ```bash
 kubectl -n default get valkey valkey-cluster \
@@ -75,8 +77,14 @@ kubectl -n default get pods -l buf.red/name=valkey-cluster \
 kubectl -n default exec <ready-pod> -c valkey -- valkey-cli INFO server
 ```
 
-Then verify application reads and writes, ACL authentication, replication or
-Cluster slot coverage, failover discovery where applicable, and exporter metrics.
+`status.lastVersion` is copied from the desired version during high-level
+reconciliation. It is not an observation of every running process. Verify the
+image and `INFO server` output on every data Pod; in Cluster architecture, do not
+assume one Pod represents every shard.
+
+Then verify application reads and writes, access control list (ACL)
+authentication, replication or Cluster slot coverage, failover discovery where
+applicable, and exporter metrics.
 
 ## Failure boundary
 
@@ -84,3 +92,7 @@ Do not patch `spec.version` back to the previous value; downgrade is rejected an
 can be unsafe for persisted data. Preserve logs and Events, stop further changes,
 and follow the product support recovery plan. A downgrade requires a separately
 created compatible instance and a validated data migration or restore process.
+
+Use the exact target version's [command index](https://valkey.io/commands/) and
+[`INFO` reference](https://valkey.io/commands/info/) when checking command,
+configuration, and runtime compatibility.

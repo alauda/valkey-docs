@@ -1,7 +1,8 @@
-# Alauda Build of Valkey documentation
+# Alauda Cache Service E2 documentation
 
-This repository contains the CLI-focused product documentation for Alauda Build
-of Valkey. The site uses the same Doom documentation toolchain as `redis-docs`.
+This repository contains the CLI-focused product documentation for Alauda Cache
+Service E2, the Valkey-based cache service. The site uses the same Doom
+documentation toolchain as `redis-docs`.
 
 ## Local development
 

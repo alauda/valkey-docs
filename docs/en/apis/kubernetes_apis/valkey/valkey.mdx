@@ -25,11 +25,11 @@ Cluster shard or the total data-member count for Failover/Replica.
 | `spec.replicas` | Shard and member counts; optional initial slot plan | `shardsConfig` is consumed during Cluster initialization. |
 | `spec.resources` | Data-container CPU and memory | CPU and memory are required by the webhook. |
 | `spec.customConfigs` | Valkey configuration directives | Operator-owned directives are filtered; some changes require restart. |
-| `spec.modules` | Startup module path and arguments | The module file must already exist in the delivered server image at the configured path; the operator does not fetch modules or supply a module catalog. |
-| `spec.storage` | PVC capacity, class, access mode, and annotations | Validate retention behavior before deletion. |
-| `spec.access` | Service type, annotations, IP family, fixed ports, and TLS issuer | Leave fixed `ports` unset unless the delivered build resolves the documented format conflict. |
+| `spec.modules` | Startup module path and arguments | The Operator only renders `loadmodule`. Standard inspected images contain no module files, and this API has no image override; use only a product-delivered and validated module. |
+| `spec.storage` | Persistent volume claim (PVC) capacity, class, and annotations | The schema accepts an access mode, but generated PVCs always request `ReadWriteOnce`. In the inspected baseline, `retainAfterDeleted` has no effect and generated PVCs remain after deletion; review them explicitly. |
+| `spec.access` | Service type, annotations, Internet Protocol (IP) family, fixed ports, and TLS issuer | Leave fixed `ports` unset unless the delivered build resolves the documented format conflict. |
 | `spec.podAnnotations` | Data-workload annotations and lifecycle triggers | Pause and restart use reserved annotation keys documented in the guides. |
-| `spec.affinityPolicy` | Built-in placement policy | Custom affinity also requires `spec.customAffinity`. |
+| `spec.affinityPolicy` | Built-in placement policy | Cluster `AntiAffinity` is shard-local in the implementation, and the `CustomAffinity` literal does not activate the Cluster builder's custom-affinity branch. |
 | `spec.nodeSelector` | Node label selection | Standard Kubernetes selector semantics. |
 | `spec.tolerations` | Pod tolerations | Standard Kubernetes toleration semantics. |
 | `spec.securityContext` | Pod security context | Applied to data workloads. |
@@ -44,7 +44,7 @@ Cluster shard or the total data-member count for Failover/Replica.
 | `status.message` | Current reconciliation or failure detail. |
 | `status.matchLabels` | Labels that identify managed resources. |
 | `status.nodes` | Observed Pod, role, address, member, and slot information. |
-| `status.lastShardCount` | Last observed Cluster shard count. |
-| `status.lastVersion` | Last observed server line. |
+| `status.lastShardCount` | Last shard count recorded by high-level reconciliation; verify child resources and Pods for actual topology. |
+| `status.lastVersion` | Last desired version recorded by high-level reconciliation; verify every Pod image and `INFO server` for the runtime version. |
 
 <K8sCrd name="valkeys.rds.valkey.buf.red" />

@@ -2,26 +2,28 @@
 weight: 15
 i18n:
   title:
-    zh: 安装与验证
-title: Install and verify
+    zh: 安装
+title: Install
 ---
 
-# Install and verify
+# Install
 
-Install the Alauda Build of Valkey 2.0.0 product package with the CLI-based
-installation workflow provided for your Alauda Container Platform environment.
+Install the Alauda Cache Service E2 version 2.0.0 product package with the
+CLI-based installation workflow provided for your Alauda Container Platform
+environment.
 The exact registry, namespace, and package command are distribution-specific and
 are not defined by the Valkey Operator repository.
 
 ## Prerequisites
 
-- a supported Kubernetes cluster and a `kubectl` context with cluster-admin
-  permissions for installation;
-- access to the Alauda Build of Valkey 2.0.0 images;
+- a supported Kubernetes cluster and a `kubectl` context allowed to install the
+  chart's cluster-scoped custom resource definitions (CRDs), admission webhooks,
+  and role-based access control resources;
+- access to the Alauda Cache Service E2 version 2.0.0 images;
 - a default `StorageClass`, or an explicit class for persistent instances;
 - cert-manager for the default webhook-certificate installation path; an
   `Issuer` or `ClusterIssuer` is also required when instance TLS is enabled;
-- a Prometheus-compatible scraper if Valkey exporter metrics will be collected.
+- a Prometheus-compatible scraper if exporter-sidecar metrics will be collected.
 
 Obtain the release-specific platform compatibility matrix before production
 installation. The documentation baseline does not define the supported Alauda
@@ -42,20 +44,21 @@ kubectl get storageclass
 kubectl get crd certificates.cert-manager.io
 ```
 
-The default operator chart enables admission webhooks and cert-manager
+The default Operator chart enables admission webhooks and cert-manager
 integration. A release may instead supply an externally managed webhook
-certificate and CA bundle, but that must be an explicit package configuration;
+certificate and certificate authority (CA) bundle, but that must be an explicit
+package configuration;
 do not disable certificate integration without a replacement. Instance TLS still
 uses cert-manager. A missing default StorageClass is acceptable only when every
 persistent instance specifies a valid class.
 
 ## Install the product
 
-Use the CLI package installation workflow supplied with the Alauda Build of
-Valkey 2.0.0 release. Record the chosen package version, image registry, target
-namespace, scope, and approval strategy. Do not substitute commands, channels,
-or component names copied from Alauda Cache Service for Redis OSS; the two
-products have different APIs and capability sets.
+Use the CLI package installation workflow supplied with the Alauda Cache
+Service E2 version 2.0.0 release. Record the chosen package version, image
+registry, target namespace, scope, and approval strategy. Do not substitute commands, channels,
+or component names copied from the Redis product; the two products have
+different APIs and capability sets.
 
 ## Verify the installation
 
@@ -78,7 +81,22 @@ kubectl get crd \
   users.valkey.buf.red
 ```
 
-Locate the operator Deployment and verify its availability:
+The inspected 2.0.0 source contains two generated CRD copies that disagree on
+the version enum: the API source and `config/crd/bases` include `9.1`, while the
+Helm Chart CRD copy is stale. A release package that supports 9.1 must install a
+CRD whose enum includes `7.2`, `8.1`, and `9.1`. Verify the installed schema
+before creating an instance:
+
+```bash
+kubectl explain valkey.spec.version
+kubectl get crd valkeys.rds.valkey.buf.red \
+  -o jsonpath='{range .spec.versions[?(@.name=="v1alpha1")].schema.openAPIV3Schema.properties.spec.properties.version.enum[*]}{.}{"\n"}{end}'
+```
+
+Treat a missing `9.1` enum as a packaging defect; do not bypass admission or edit
+the CRD ad hoc.
+
+Locate the Operator Deployment and verify its availability:
 
 ```bash
 kubectl get deployment -A -l app.kubernetes.io/name=valkey-operator

@@ -8,7 +8,7 @@ title: Delete an instance
 
 # Delete an instance
 
-Deleting a `Valkey` resource removes its operator-managed workloads and Services.
+Deleting a `Valkey` resource removes its Operator-managed workloads and Services.
 This operation is destructive and is not a backup workflow.
 
 ## Expected impact
@@ -16,11 +16,11 @@ This operation is destructive and is not a backup workflow.
 | Resource or behavior | Expected result |
 | --- | --- |
 | Data Pods and StatefulSets | Removed by owner references and finalizers. |
-| Cluster, Failover, and Sentinel child CRs | Removed with the owning instance. |
+| Cluster, Failover, and Sentinel child custom resources (CRs) | Removed with the owning instance. |
 | Services and generated configuration | Removed when their owner is deleted. |
-| ACL `User` resources | Operator-managed built-ins and owned custom users can be removed. Record required definitions first. |
-| PVCs and underlying volumes | Outcome depends on operator behavior, StatefulSet retention, StorageClass reclaim policy, and the delivered build. Verify explicitly. |
-| External backups or exports | Not managed by the operator and must be handled by their owning system. |
+| Access control list (ACL) `User` resources | Operator-managed built-ins and owned custom users can be removed. Record required definitions first. |
+| Persistent volume claims (PVCs) and underlying volumes | In the inspected baseline, generated PVCs carry no owner reference to the instance and no Operator path deletes them, so they remain after deletion regardless of `spec.storage.retainAfterDeleted`. Verify against the delivered build and remove unneeded PVCs explicitly. |
+| External backups or exports | Not managed by the Operator and must be handled by their owning system. |
 
 ## Before you delete
 
@@ -33,9 +33,11 @@ This operation is destructive and is not a backup workflow.
    kubectl get storageclass
    ```
 
-4. Protect any PVC that must be retained. Do not assume that
-   `spec.storage.retainAfterDeleted` alone guarantees retention in every 2.0.0
-   build.
+4. Protect any PVC that must be retained. In the inspected baseline,
+   `spec.storage.retainAfterDeleted` has no effect: generated PVCs are always
+   left in place after deletion. Do not treat the leftover PVCs as deleted
+   data, and do not assume a delivered build behaves identically without
+   verifying it.
 
 ## Delete the instance
 
@@ -67,5 +69,6 @@ kubectl -n <namespace> get statefulset,pod,service,configmap \
   -l buf.red/name=<name>
 ```
 
-Do not remove operator finalizers to force deletion unless product support has
-confirmed the remaining child resources and data-retention consequences.
+Do not remove finalizers added by the Operator to force deletion unless product
+support has confirmed the remaining child resources and data-retention
+consequences.

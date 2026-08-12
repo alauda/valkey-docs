@@ -9,7 +9,7 @@ i18n:
 
 | Canonical name | API literal or abbreviation | Usage |
 | --- | --- | --- |
-| Alauda Build of Valkey | — | Product name. |
+| Alauda Cache Service E2 | — | Product name. Renamed from “Alauda Build of Valkey”; do not use the former name in new text. |
 | Valkey Operator | — | Kubernetes operator delivered with the product. |
 | Valkey | `Valkey`, `vk` | High-level namespaced custom resource. |
 | Cluster architecture | `spec.arch: cluster` | Sharded deployment using 16,384 hash slots. |
@@ -30,4 +30,6 @@ i18n:
 | large key | `valkey-cli --bigkeys` | Key whose size or collection cardinality creates workload-specific operational risk. Do not imply one universal size threshold. |
 | Web Console | — | Unsupported for this product; do not provide UI instructions. |
 
-Valkey is a trademark of LF Projects, LLC.
+Valkey and the Valkey logo are trademarks of LF Projects, LLC. Use the Valkey
+mark as an adjective with a generic noun in product-listing text, for example
+“Valkey server 7.2” and “built on Valkey™ technology”.

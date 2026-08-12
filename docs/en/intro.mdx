@@ -8,7 +8,7 @@ title: Introduction
 
 # Introduction
 
-Alauda Build of Valkey deploys and operates Valkey instances on Kubernetes
+Alauda Cache Service E2 deploys and operates Valkey instances on Kubernetes
 through declarative custom resources. The Valkey Operator reconciles the desired
 state, creates the data-plane workloads and Services, and performs lifecycle
 operations such as scaling, configuration updates, upgrades, and node recovery.
@@ -27,8 +27,9 @@ The next major product release is `2.0.0`. It supports these Valkey server lines
 | Valkey 9.1 | `"9.1"` |
 
 Do not use `8.0` or `9.0`, even if a compatibility enum in an installed custom
-resource definition (CRD) accepts those values. The 2.0.0 product package
-contains server images only for 7.2, 8.1, and 9.1.
+resource definition (CRD) accepts those values. The 2.0.0 Operator image map
+selects only the 7.2, 8.1, and 9.1 server lines. A schema enum value for
+another line does not establish product support.
 
 ## Architectures
 
@@ -45,20 +46,24 @@ primary and one replica after reconciliation.
 
 ## Implemented capabilities
 
-- online shard and member scaling;
+- in-place shard and member changes, including Cluster slot rebalancing;
 - rolling version upgrades and rolling restarts;
 - Valkey access control list (ACL) users backed by Kubernetes Secrets;
 - ClusterIP, NodePort, and LoadBalancer Services;
 - IPv4 or IPv6 single-stack Services;
-- optional cert-manager-issued TLS;
+- optional cert-manager-issued mutual TLS (mTLS);
 - optional persistent storage through persistent volume claims (PVCs);
-- node selectors, tolerations, affinity, and Pod security context;
+- node selectors, tolerations, the implemented affinity policies, and Pod
+  security context;
 - Valkey metrics through an exporter sidecar;
-- hot configuration updates for supported parameters.
+- hot configuration updates for supported parameters;
+- hardened credential handling: hashed ACL passwords, encrypted configuration
+  credentials, and redacted `CONFIG GET` output for credential directives on
+  the delivered images.
 
 ## Responsibility boundary
 
-The operator reconciles Kubernetes resources and Valkey topology. Application
+The Operator reconciles Kubernetes resources and Valkey topology. Application
 owners remain responsible for workload-specific key design, client retry and
 timeout behavior, and capacity objectives. Backup, restore, and disaster recovery
 are not product capabilities in 2.0.0. Cluster or Failover redundancy protects
@@ -69,9 +74,19 @@ accounts. Treat generated `Cluster`, `Failover`, `Sentinel`, StatefulSet,
 Service, ConfigMap, and Secret resources as operator-owned implementation
 details.
 
+Valkey replication is asynchronous. A ready redundant topology can improve
+availability, but replica reads can be stale and an acknowledged write is not
+guaranteed to survive every primary failure. Client consistency and retry
+requirements must account for that server behavior.
+
 See [Current limitations](./limitations.mdx) for unsupported capabilities and the
 boundaries of fixed NodePort assignment, PVC retention, and monitoring integration.
 
+Protocol and server-behavior references: [Valkey Cluster
+specification](https://valkey.io/topics/cluster-spec/), [Valkey
+replication](https://valkey.io/topics/replication/), and [Valkey
+Sentinel](https://valkey.io/topics/sentinel/).
+
 ---
 
-Valkey is a trademark of LF Projects, LLC.
+Valkey and the Valkey logo are trademarks of LF Projects, LLC.

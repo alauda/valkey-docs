@@ -12,18 +12,25 @@ The high-level `Valkey` API exposes standard Kubernetes scheduling controls.
 
 ## Affinity policies
 
-Cluster architecture accepts these `spec.affinityPolicy` values:
+The high-level schema accepts these `spec.affinityPolicy` values, but the
+inspected Cluster builder does not implement every schema description:
 
 | Value | Behavior |
 | --- | --- |
-| `SoftAntiAffinity` | Prefers spreading Pods across nodes but does not require it. |
+| `SoftAntiAffinity` | Prefers spreading members of the same shard across nodes; it does not require separation. |
 | `AntiAffinityInShard` | Requires members of the same shard to run on different nodes. This is the default applied by the Cluster builder. |
-| `AntiAffinity` | Requires all instance Pods to run on different nodes. |
-| `CustomAffinity` | Uses `spec.customAffinity`. |
+| `AntiAffinity` | The implementation uses the same shard-local selector as `AntiAffinityInShard`; it does not enforce separation across all shards. |
+| `CustomAffinity` | The API literal does not match the internal constant selected by the Cluster builder, so this branch is not reliably activated. Treat it as unsupported for Cluster in this baseline. |
 
 Required anti-affinity can leave Pods `Pending` when the cluster has too few
-eligible nodes. For example, three shards with two members and full
-`AntiAffinity` need at least six matching nodes.
+eligible nodes. For example, two members in one shard require two eligible nodes
+for either required policy. Different shards can still share those nodes.
+
+For an existing Cluster instance, the reconcile path preserves each
+StatefulSet's current Pod affinity during updates. A changed `affinityPolicy`
+or `customAffinity` therefore applies only to StatefulSets created afterward,
+such as the workloads of newly added shards. Set the intended policy at
+creation time.
 
 ## Node selector and tolerations
 
@@ -46,18 +53,19 @@ kubectl -n default patch valkey valkey-cluster --type=merge -p '
 }'
 ```
 
-The operator propagates these settings to data workloads. For an operator-created
+The Operator propagates these settings to data workloads. For an Operator-created
 Sentinel deployment, unspecified Sentinel node selectors and tolerations inherit
 the high-level instance values.
 
-## Custom affinity
+## Failover and Replica affinity
 
-When using custom affinity, set the policy and the Kubernetes `Affinity` object
-together:
+Failover and Replica do not use the high-level `affinityPolicy` switch. When
+`spec.customAffinity` is absent, their data StatefulSet receives required
+anti-affinity across the data group. When `spec.customAffinity` is present, the
+builder copies that Kubernetes `Affinity` object directly. For example:
 
 ```yaml
 spec:
-  affinityPolicy: CustomAffinity
   customAffinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -66,8 +74,13 @@ spec:
             topologyKey: topology.kubernetes.io/zone
             labelSelector:
               matchLabels:
-                buf.red/name: valkey-cluster
+                buf.red/name: valkey-failover
 ```
+
+Replace the label value with the owning instance name. Apply this field only
+after validating it against the Failover or Replica workload in a test namespace
+and inspecting the generated StatefulSet. An Operator-created Sentinel inherits
+the high-level node selector and tolerations, but not this custom affinity.
 
 ## Verify scheduling
 

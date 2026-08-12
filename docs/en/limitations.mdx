@@ -3,10 +3,10 @@ weight: 30
 i18n:
   title:
     zh: 当前限制
-title: Current limitations
+title: Current Limitations
 ---
 
-# Current limitations
+# Current Limitations
 
 The following boundaries apply to the 2.0.0 documentation baseline.
 
@@ -19,8 +19,14 @@ automation.
 
 Only Valkey 7.2, 8.1, and 9.1 are supported. An installed custom resource
 definition (CRD) may still accept `8.0` or `9.0` for compatibility with upstream
-API history, but the 2.0.0 product package does not provide those server image
-lines.
+API history. That does not establish product support: the 2.0.0 Operator image
+map selects only 7.2, 8.1, and 9.1, and the pinned image source builds only
+those three lines.
+
+The inspected Helm Chart CRD copy is stale and omits `9.0` and `9.1`, while the
+API source and canonical generated CRD include both. Verify that the delivered
+2.0.0 package installs a schema that admits 9.1. A missing 9.1 enum is a package
+defect, not a reason to bypass admission.
 
 ## Backup, restore, and disaster recovery
 
@@ -37,26 +43,87 @@ incompatible formats in the generated CRD schema and the runtime parser. Leave t
 field unset so Kubernetes allocates NodePorts unless your delivered build provides
 a documented and validated format.
 
-## Persistent volume retention
+## Persistent volume behavior
 
-Do not rely on `spec.storage.retainAfterDeleted` without validating the behavior
-of the delivered build and its StatefulSet persistent volume claim (PVC)
-retention policy. Before deleting an instance, list its PVCs and protect or copy
-required data explicitly.
+In the inspected baseline, `spec.storage.retainAfterDeleted` has no effect:
+generated persistent volume claims (PVCs) never carry an owner reference to the
+instance, and no Operator reconcile path deletes them, so deleting an instance
+always leaves its PVCs behind. Before deleting an instance, list its PVCs;
+afterwards, remove unneeded PVCs explicitly once their data is confirmed
+disposable.
+
+`spec.storage.accessMode` is accepted by the schema and defaults to
+`ReadWriteOnce`, but the StatefulSet builders always request `ReadWriteOnce`;
+another value is not applied.
 
 ## Monitoring integration
 
-The Valkey exporter sidecar and metrics Services are implemented. The operator's
-shipped `ServiceMonitor` selects operator metrics, not Valkey data-plane metrics.
-Create the data-plane scrape configuration required by your monitoring stack.
+The exporter sidecar and metrics Services are implemented with
+`redis_exporter`. The inspected Operator source does not establish complete
+metric compatibility with every 9.1 command or field. Validate the required
+metrics against the delivered exporter image. The shipped `ServiceMonitor`
+selects Operator metrics, not Valkey data-plane metrics; create and test the
+data-plane scrape configuration required by your monitoring stack.
 
-## Features not implemented by the operator
+## Scheduling policy implementation
+
+For Cluster architecture, the inspected implementation applies both
+`AntiAffinityInShard` and `AntiAffinity` only within each shard. It does not
+enforce one node per Pod across the whole instance. The API literal
+`CustomAffinity` also does not match the internal constant used by the Cluster
+StatefulSet builder, so `spec.customAffinity` is not reliably applied to Cluster
+Pods in this baseline. In addition, the Cluster reconcile path preserves each
+existing StatefulSet's current Pod affinity on update, so an affinity change on
+an existing Cluster instance takes effect only for StatefulSets created
+afterward, such as new shards. Failover and Replica copy `spec.customAffinity`
+directly and do not use the high-level `affinityPolicy` to select it. See
+[Configure scheduling](./functions/60-scheduling.mdx).
+
+## TLS endpoint and client-certificate boundary
+
+The Operator-generated server certificate covers a limited set of generated
+in-cluster names; it does not include arbitrary NodePort addresses,
+LoadBalancer addresses, or every `.svc` form. For Cluster architecture, it also
+does not cover the per-Pod Service names or addresses announced to clients.
+Therefore a bootstrap TLS connection can pass hostname verification while a
+redirected connection fails it. Do not treat the standard generated-certificate
+path as a complete production Cluster TLS solution unless the delivered build
+aligns every announced endpoint with a certificate subject alternative name.
+
+Valkey also requires a trusted client certificate by default because the
+generated server arguments do not disable TLS client authentication. Clients
+need the trusted certificate authority (CA) plus a trusted client certificate
+and private key. Do not distribute the instance server private key as a general
+client credential. The Operator's internal clients disable server-name
+verification; that internal implementation is not a safe configuration model
+for application clients. Do not use `--insecure` as the workaround.
+
+## Modules
+
+`spec.modules` renders startup `loadmodule` directives only. The inspected 2.0.0
+container source installs no module files, and the high-level API has no server
+image override. Treat modules as unavailable with the standard images unless a
+delivered build explicitly supplies and validates the requested module.
+
+## Configuration filtering
+
+`rename-command` is marked restart-required in one source map but is skipped by
+both the Cluster and Failover configuration renderers, so it is unavailable in
+this baseline. Forbidden configuration keys, including credential and
+TLS-passphrase directives, are filtered case-insensitively on the Cluster,
+Failover, and Sentinel configuration paths; a case variant cannot bypass the
+Operator-owned list.
+Verify the generated ConfigMap and the effective server configuration. On the
+delivered server images, `CONFIG GET` reports a set `requirepass` or
+`primaryauth` value as a fixed redaction placeholder, not the credential.
+
+## Features not implemented by the Operator
 
 - integrated large-key inspection and report export;
 - parameter templates;
 - integrated log viewer;
 - automatic cross-cluster replication or failover;
-- an operator-managed backup repository or restore job.
+- an Operator-managed backup repository or restore job.
 
 The absence of an integrated large-key report does not prevent a controlled
 manual investigation with `valkey-cli`. See

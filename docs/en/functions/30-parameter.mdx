@@ -9,7 +9,7 @@ title: Configure Valkey parameters
 # Configure Valkey parameters
 
 Set Valkey server directives as string values in `spec.customConfigs`. The
-operator renders the configuration, compares it with the last applied version,
+Operator renders the configuration, compares it with the last applied version,
 and either applies `CONFIG SET` to ready nodes or triggers a rolling restart.
 
 ## Before changing parameters
@@ -42,7 +42,9 @@ kubectl -n default get valkey valkey-cluster -w
 
 Parameters not listed as forbidden or restart-required are attempted as hot
 updates. A directive can still fail if the selected Valkey version does not allow
-runtime modification. Check `.status.message`, Events, and server logs.
+runtime modification. The absence of a directive from the Operator's lists is
+not a Valkey compatibility guarantee. Check `.status.message`, Events, and
+server logs.
 
 To remove one map key without replacing the other custom configuration, use a
 JSON merge patch with a null value:
@@ -58,7 +60,6 @@ Changing any of these directives triggers a rolling restart:
 
 - `tcp-backlog`
 - `databases`
-- `rename-command`
 - `rdbchecksum`
 - `io-threads`
 - `io-threads-do-reads`
@@ -66,10 +67,17 @@ Changing any of these directives triggers a rolling restart:
 
 Plan the availability impact and wait for the instance to return to `Ready`.
 
+Do not use `rename-command` in this baseline. Although the restart-policy map
+labels it as restart-required, both Cluster and Failover configuration renderers
+skip the directive, so the requested value is not written to `valkey.conf`.
+Similarly, `loadmodule` can trigger restart logic but cannot load anything from
+the standard inspected images because they contain no module files.
+
 ## Operator-owned or forbidden parameters
 
-The operator filters these directives because it owns networking, TLS, process,
-storage paths, replication, Cluster membership, or ACL configuration:
+The Operator filters these directives because it owns networking, TLS, process,
+storage paths, replication, Cluster membership, or access control list (ACL)
+configuration:
 
 ```text
 include, bind, protected-mode, port, tls-port, tls-cert-file,
@@ -77,13 +85,21 @@ tls-key-file, tls-ca-cert-file, tls-ca-cert-dir, unixsocket,
 unixsocketperm, daemonize, supervised, pidfile, logfile,
 syslog-enabled, syslog-ident, syslog-facility, always-show-logo,
 dbfilename, appendfilename, dir, slaveof, replicaof, gopher-enabled,
-aclfile, requirepass, masterauth, masteruser, slave-announce-ip,
-replica-announce-ip, slave-announce-port, replica-announce-port,
-cluster-enabled, cluster-config-file
+aclfile, requirepass, masterauth, masteruser, primaryauth,
+primaryuser, tls-key-file-pass, tls-client-key-file-pass,
+slave-announce-ip, replica-announce-ip, slave-announce-port,
+replica-announce-port, cluster-enabled, cluster-config-file
 ```
 
 Use `spec.access`, `spec.storage`, `User`, and the topology fields instead of
 setting their generated directives directly.
+
+The filter matches directive names case-insensitively on every configuration
+path, including Sentinel, so a differently cased key such as `RequirePass` is
+removed as well; a case variant is not a way to override an Operator-owned
+setting. Still write keys in the exact lowercase server spelling: the rendered
+configuration and the official Valkey documentation use lowercase directive
+names.
 
 ## Configure Sentinel monitoring
 
@@ -109,6 +125,10 @@ These values affect failure detection and recovery behavior. Validate them
 against network latency, Pod restart time, quorum, and application retry policy;
 do not lower timers solely to make a test failover appear faster.
 
+Other keys placed in `monitorConfig` are passed to `SENTINEL SET` verbatim
+without Operator validation. Use only the documented settings unless release
+validation has approved an additional directive for the selected server line.
+
 ## Verify the effective configuration
 
 Select a ready data Pod and query the intended keys:
@@ -123,6 +143,19 @@ If ACL authentication is enabled, use `--user <username> --askpass`. With TLS,
 run the CLI from a location where the issued certificates are available and add
 the TLS options described in [Access and TLS](./40-accessmethod.mdx).
 
-Removing a map entry does not prove that a runtime value returned to its upstream
-default. Query the effective configuration after every deletion and restart the
-instance if the operational result is ambiguous.
+On the delivered server images, credential directives such as `requirepass` and
+`primaryauth` are redacted in `CONFIG GET` output: a set credential is reported
+as a fixed placeholder rather than its value. Do not use `CONFIG GET` to read
+back a password; passwords are managed through Kubernetes Secrets and the
+`User` resource.
+
+Removing a map entry updates generated configuration, but the inspected hot
+update path does not issue a compensating `CONFIG SET` to restore the running
+value. Query every affected node after a deletion. If the runtime value must
+change, use a separately reviewed restart and verify the post-restart value.
+
+Directive names, mutability, and defaults vary by exact server version. Use
+[`CONFIG GET`](https://valkey.io/commands/config-get/) and the official [Valkey
+command index](https://valkey.io/commands/) for the running version; the
+Operator's lists describe reconciliation behavior, not the complete server
+configuration contract.

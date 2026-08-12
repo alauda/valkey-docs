@@ -3,13 +3,13 @@ weight: 12
 i18n:
   title:
     zh: 生命周期策略
-title: Lifecycle policy
+title: Lifecycle Policy
 ---
 
-# Lifecycle policy
+# Lifecycle Policy
 
 This page distinguishes published product facts from lifecycle information that
-has not yet been established for Alauda Build of Valkey.
+has not yet been established for Alauda Cache Service E2.
 
 ## Current release baseline
 
@@ -23,17 +23,17 @@ has not yet been established for Alauda Build of Valkey.
 | Alauda Container Platform compatibility matrix | Not yet published |
 
 Do not derive product support dates from the upstream Valkey lifecycle. Product,
-operator, server-image, and platform support are separate compatibility
+Operator, server-image, and platform support are separate compatibility
 dimensions.
 
 ## Version dimensions
 
 | Version | What it controls | How to inspect it |
 | --- | --- | --- |
-| Product version | Installed Alauda Build of Valkey package and operator | Inspect the installed package metadata and operator image. |
+| Product version | Installed Alauda Cache Service E2 package and Operator | Inspect the installed package metadata and Operator image. |
 | API version | Kubernetes resource schema | `kubectl api-resources --api-group=rds.valkey.buf.red` |
-| Server line | Valkey process created for an instance | `Valkey.spec.version` and `Valkey.status.lastVersion` |
-| Container image | Exact delivered server or operator build | Inspect the relevant Deployment or Pod specification. |
+| Server line | Valkey process created for an instance | Read `spec.version`, inspect every data Pod image, and run `INFO server` on every data Pod. `status.lastVersion` alone is not runtime proof. |
+| Container image | Exact delivered server or Operator build | Inspect the relevant Deployment or Pod specification. |
 
 Upgrading the product does not by itself change `spec.version` on existing
 instances. Upgrade each server line explicitly with the instance upgrade
@@ -41,17 +41,27 @@ procedure.
 
 ## Supported-version rule
 
-The 2.0.0 package supplies server images for `7.2`, `8.1`, and `9.1`. The
-generated CRD also accepts `8.0` and `9.0` because of API compatibility history,
-but schema acceptance is not a support commitment. Do not create or upgrade an
-instance to those values.
+The 2.0.0 Operator image map selects `7.2`, `8.1`, and `9.1`. The inspected
+image-source baseline builds patch versions 7.2.14, 8.1.9, and 9.1.1. Exact
+patch versions and digests still must be read from the delivered images.
+Generated schema enum values for 8.0 or 9.0 are not a support commitment; do
+not create or upgrade an instance to those values.
+
+The API source and canonical generated custom resource definition (CRD) include
+9.1, but the inspected Helm Chart CRD copy is stale and omits it. Verify the
+installed CRD during release acceptance; a supported package must admit all
+three supported lines.
 
 Inventory all instance versions with:
 
 ```bash
 kubectl get valkey -A \
-  -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,ARCH:.spec.arch,DESIRED:.spec.version,OBSERVED:.status.lastVersion,PHASE:.status.phase'
+  -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,ARCH:.spec.arch,DESIRED:.spec.version,LAST_RECORDED:.status.lastVersion,PHASE:.status.phase'
 ```
+
+`status.lastVersion` is a controller bookkeeping value derived from the desired
+version during reconciliation. It does not establish that every Pod has rolled
+out or that every process runs the desired line.
 
 ## Planning requirements
 
@@ -62,7 +72,9 @@ that is not defined in this repository:
 - the supported source-to-target product upgrade paths;
 - component image digests and security advisories;
 - release-specific backup, rollback, and support procedures;
-- tested Valkey server upgrade paths and module compatibility.
+- the tested Valkey server source-to-target upgrade matrix;
+- confirmation that any requested module exists in the delivered image and is
+  compatible with the target server.
 
 If any of these inputs is missing, validate the change in a representative test
 cluster and treat production rollout as pending product-owner confirmation.

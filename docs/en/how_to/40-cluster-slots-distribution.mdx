@@ -8,7 +8,7 @@ title: Initialize Cluster slot distribution
 
 # Initialize Cluster slot distribution
 
-By default, the operator allocates all 16,384 Cluster hash slots across the
+By default, the Operator allocates all 16,384 Cluster hash slots across the
 configured shards. For a new Cluster, `spec.replicas.shardsConfig` can provide an
 explicit initial slot plan.
 
@@ -59,7 +59,6 @@ spec:
   storage:
     storageClassName: standard
     capacity: 10Gi
-    accessMode: ReadWriteOnce
   access:
     serviceType: ClusterIP
   affinityPolicy: AntiAffinityInShard
@@ -83,7 +82,7 @@ kubectl -n default get valkey valkey-slots -w
 kubectl -n default get valkey valkey-slots \
   -o jsonpath='{range .status.nodes[*]}{.podName}{"\t"}{.role}{"\t"}{.slots}{"\n"}{end}'
 kubectl -n default exec <ready-cluster-pod> -c valkey -- \
-  valkey-cli CLUSTER SLOTS
+  valkey-cli CLUSTER SHARDS
 kubectl -n default exec <ready-cluster-pod> -c valkey -- \
   valkey-cli CLUSTER INFO
 ```
@@ -92,3 +91,8 @@ Do not edit the operator-owned child `Cluster.status.shards` to repair a plan.
 For a rejected create, correct the manifest and apply it again. For an already
 initialized Cluster with an incorrect business layout, plan a supported shard
 scaling operation or create a replacement instance and migrate data.
+
+`CLUSTER SHARDS` is the preferred topology view for these supported server
+lines. See its [official command
+reference](https://valkey.io/commands/cluster-shards/) and the [Valkey Cluster
+specification](https://valkey.io/topics/cluster-spec/).
