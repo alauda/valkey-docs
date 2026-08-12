@@ -14,8 +14,13 @@ exclude_patterns:
   - "**/dist/**"
   - "**/build/**"
   - "**/llms.txt"
+  - "**/llmstxt-state.json"
   - "README.md"
   - "**/.DS_Store"
+  # Authoring policy for agents, not product documentation.
+  - "docs/agent/**"
+  - "AGENTS.md"
+  - "CLAUDE.md"
 grouping_base_path: "docs/en"
 batch_size: 15
 description_max_words: 150
