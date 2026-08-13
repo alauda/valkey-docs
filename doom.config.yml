@@ -4,5 +4,3 @@ lang: en
 api:
   crds:
     - docs/shared/crds/*.yaml
-internalRoutes:
-  - agent/**/*
