@@ -18,7 +18,7 @@ exclude_patterns:
   - "README.md"
   - "**/.DS_Store"
   # Authoring policy for agents, not product documentation.
-  - "docs/agent/**"
+  - "agent/**"
   - "AGENTS.md"
   - "CLAUDE.md"
 grouping_base_path: "docs/en"
