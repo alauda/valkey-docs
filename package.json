@@ -5,9 +5,9 @@
   },
   "scripts": {
     "dev": "doom dev",
-    "build": "doom --ignore=true build",
+    "build": "doom build",
     "lint": "doom lint",
-    "serve": "doom --ignore=true serve",
+    "serve": "doom serve",
     "translate": "doom translate"
   },
   "packageManager": "yarn@4.9.4"
