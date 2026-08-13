@@ -2,10 +2,13 @@
 
 Before writing or changing technical documentation, read:
 
-- `docs/agent/TECHNICAL_WRITING_POLICY.md`
-- `docs/agent/TERMINOLOGY.md`
-- `docs/agent/ARCHITECTURE_FACTS.md`
-- `docs/agent/SOURCE_POLICY.md`
+- `agent/TECHNICAL_WRITING_POLICY.md`
+- `agent/TERMINOLOGY.md`
+- `agent/ARCHITECTURE_FACTS.md`
+- `agent/SOURCE_POLICY.md`
+
+These live at the repository root, outside `docs/`. Anything under `docs/` is
+rendered as a documentation route and published; authoring policy must not be.
 
 Treat `TERMINOLOGY.md` as the canonical vocabulary. Verify product claims against
 the current `valkey-operator` `origin/master` source, generated CRDs, and packaged
