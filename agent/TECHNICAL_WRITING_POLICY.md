@@ -29,6 +29,12 @@ command. Preserve API field names exactly in code and use plain English in prose
   low-level API reference is specifically required.
 - Keep example resource requests and limits equal because the validating webhook
   warns when they differ.
+- Expand a product-domain abbreviation at first use on each page: ACL, PVC, CRD,
+  and CA. Do not expand a standard protocol, standards-body, or computing
+  abbreviation that is written as a proper name in its own specifications:
+  RFC (as in `RFC 3339`), IP, IPv4, IPv6, TCP, TLS, DNS, HTTP, URL, JSON, YAML,
+  CPU, SSH, CLI, and API. "Request for Comments 3339" and "Internet Protocol
+  version 4" are not the canonical names and read as unfamiliarity with them.
 - Never embed real passwords or tokens. Refer to a Kubernetes Secret in the same
   namespace and use interactive authentication with `valkey-cli`.
 

@@ -64,10 +64,10 @@ Discover the actual Services instead of constructing names in automation:
 kubectl -n default get service -l buf.red/name=valkey-failover -o wide
 ```
 
-## Internet Protocol family
+## IP family
 
-Set `spec.access.ipFamilyPrefer` to Internet Protocol (IP) version 4 (`IPv4`) or
-version 6 (`IPv6`). The generated Services use a single-stack IP family policy.
+Set `spec.access.ipFamilyPrefer` to `IPv4` or `IPv6`. The generated Services use
+a single-stack IP family policy.
 Ensure the cluster, nodes, load balancer, DNS, and clients support the selected
 family before changing an existing instance.
 

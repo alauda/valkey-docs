@@ -143,10 +143,12 @@ If ACL authentication is enabled, use `--user <username> --askpass`. With TLS,
 run the CLI from a location where the issued certificates are available and add
 the TLS options described in [Access and TLS](./40-accessmethod.mdx).
 
-On the delivered server images, credential directives such as `requirepass` and
-`primaryauth` are redacted in `CONFIG GET` output: a set credential is reported
-as a fixed placeholder rather than its value. Do not use `CONFIG GET` to read
-back a password; passwords are managed through Kubernetes Secrets and the
+On the delivered server images, credential directives are redacted in
+`CONFIG GET` output: a set credential is reported as a fixed placeholder rather
+than its value. The directives are `requirepass` and the replication credential,
+which is `masterauth` on 7.2 and `primaryauth` on 8.1 and 9.1, where
+`masterauth` is kept as an alias. Do not use `CONFIG GET` to read back a
+password; passwords are managed through Kubernetes Secrets and the
 `User` resource.
 
 Removing a map entry updates generated configuration, but the inspected hot
