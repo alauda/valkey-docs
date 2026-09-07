@@ -19,9 +19,14 @@ that Operator baseline's 7.2, 8.1, and 9.1 image tags.
 
 - The product name is Alauda Cache Service E2, renamed from Alauda Build of
   Valkey: `.artifact/metadata.yaml` `displayName` and the OLM
-  ClusterServiceVersion base, commits `ebb4cbaf` through `0135484d`. The same
-  commits use the Valkey mark as an adjective and carry the upstream notice
-  "Valkey and the Valkey logo are trademarks of LF Projects, LLC."
+  ClusterServiceVersion base, commits `ebb4cbaf` through `0135484d`. Those
+  commits carried the upstream notice "Valkey and the Valkey logo are
+  trademarks of LF Projects, LLC." Commit `8702ca3`, merged to `release-2.0` as
+  `8f7e2cc` on 2026-09-05, replaced that notice in all four listing description
+  fields with the notice the ACP component compliance rules require verbatim, and
+  writes `Valkey®` at the first usage of the mark in every listing field. The
+  current wording is in `TERMINOLOGY.md`. The `valkey-operator` `master` branch
+  still carries the superseded notice until that change is cherry-picked.
 - The next major product release is `2.0.0`: `version:1`.
 - The Operator image map selects Valkey server lines `7.2`, `8.1`, and `9.1`:
   `values.yaml:17-34`. These are the only supported versions in product docs.
@@ -66,6 +71,17 @@ that Operator baseline's 7.2, 8.1, and 9.1 image tags.
   container baseline builds only the three supported lines; earlier baselines
   also carried 8.0 and 9.0 build directories. Product docs label the broader
   schema surface as unsupported.
+- The replication credential directive is not spelled the same on every supported
+  line. The credential-encryption patch registers it as `masterauth` with no
+  alias on 7.2 (`valkey/7.2/alpine/80_alauda_crypto.patch:146`) and as
+  `primaryauth` with `masterauth` as its alias on 8.1 and 9.1
+  (`valkey/8.1/alpine/80_alauda_crypto.patch:147`,
+  `valkey/9.1/alpine/80_alauda_crypto.patch:146`);
+  `internal/builder/config.go` forbids both spellings and records the rename in a
+  comment. `requirepass` is registered with no alias on all three lines. Any
+  passage that tells a reader to inspect the replication credential must name the
+  directive per line: `CONFIG GET primaryauth` returns an empty result on 7.2,
+  which reads as "not set" while the credential is in fact held by `masterauth`.
 - The Helm Chart CRD copy under `charts/valkey-operator/crds` is stale: it omits
   9.0 and 9.1, while the API type and canonical generated CRD include them. A
   2.0.0 release package must install the canonical schema so supported line 9.1

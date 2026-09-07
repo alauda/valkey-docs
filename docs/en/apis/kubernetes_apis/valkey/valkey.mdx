@@ -27,7 +27,7 @@ Cluster shard or the total data-member count for Failover/Replica.
 | `spec.customConfigs` | Valkey configuration directives | Operator-owned directives are filtered; some changes require restart. |
 | `spec.modules` | Startup module path and arguments | The Operator only renders `loadmodule`. Standard inspected images contain no module files, and this API has no image override; use only a product-delivered and validated module. |
 | `spec.storage` | Persistent volume claim (PVC) capacity, class, and annotations | The schema accepts an access mode, but generated PVCs always request `ReadWriteOnce`. In the inspected baseline, `retainAfterDeleted` has no effect and generated PVCs remain after deletion; review them explicitly. |
-| `spec.access` | Service type, annotations, Internet Protocol (IP) family, fixed ports, and TLS issuer | Leave fixed `ports` unset unless the delivered build resolves the documented format conflict. |
+| `spec.access` | Service type, annotations, IP family, fixed ports, and TLS issuer | Leave fixed `ports` unset unless the delivered build resolves the documented format conflict. |
 | `spec.podAnnotations` | Data-workload annotations and lifecycle triggers | Pause and restart use reserved annotation keys documented in the guides. |
 | `spec.affinityPolicy` | Built-in placement policy | Cluster `AntiAffinity` is shard-local in the implementation, and the `CustomAffinity` literal does not activate the Cluster builder's custom-affinity branch. |
 | `spec.nodeSelector` | Node label selection | Standard Kubernetes selector semantics. |

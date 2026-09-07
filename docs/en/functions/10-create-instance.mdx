@@ -30,7 +30,7 @@ major release, 2.0.0, supports only `7.2`, `8.1`, and `9.1` in `spec.version`.
 | `spec.replicas.replicasOfShard` | Total data-member count: 1–5. Use at least 2 for primary-replica redundancy. |
 | `spec.resources` | Set CPU and memory requests and limits; equal values avoid a webhook warning. |
 | `spec.storage` | Omit for ephemeral storage, or set capacity and StorageClass. Generated persistent volume claims always request the `ReadWriteOnce` access mode. |
-| `spec.access` | Select ClusterIP, NodePort, or LoadBalancer and the Internet Protocol (IP) family; optionally enable TLS. |
+| `spec.access` | Select ClusterIP, NodePort, or LoadBalancer and the IP family; optionally enable TLS. |
 | `spec.affinityPolicy` | Choose a policy that the available node count can satisfy. |
 | `spec.customConfigs` | Set only directives that the Operator does not own or forbid. |
 | `spec.exporter` | Enabled by default; size the sidecar or explicitly disable it. |
@@ -167,8 +167,8 @@ spec:
 EOF
 ```
 
-Set `replicasOfShard: 1` only when you intentionally want a single data node and
-accept the lack of primary-replica redundancy.
+Set `replicasOfShard: 1` only when you intentionally want a single data member
+and accept the lack of primary-replica redundancy.
 
 ## Verify the instance
 

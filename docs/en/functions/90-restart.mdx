@@ -8,7 +8,7 @@ title: Rolling restart
 
 # Rolling restart
 
-Set a new Request for Comments (RFC) 3339 timestamp in
+Set a new RFC 3339 timestamp in
 `spec.podAnnotations["kubectl.kubernetes.io/restartedAt"]` to trigger workload
 template updates and rolling Pod replacement. The value must parse as a timestamp
 and be later than the previously recorded value; reusing or decreasing it does

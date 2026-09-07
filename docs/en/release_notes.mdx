@@ -76,8 +76,10 @@ The 2.0.0 baseline hardens how instance credentials are stored and exposed:
   into rendered configuration encrypted with a per-instance key. The Operator
   manages that key in a dedicated Secret; only the key, never a password
   Secret, is mounted into instance containers.
-- On the delivered server images, `CONFIG GET` reports a set `requirepass` or
-  `primaryauth` value as a fixed redaction placeholder.
+- On the delivered server images, `CONFIG GET` reports a set `requirepass`
+  value, or a set replication credential, as a fixed redaction placeholder. The
+  replication directive is `masterauth` on 7.2 and `primaryauth` on 8.1 and 9.1,
+  where `masterauth` is kept as an alias.
 - The exporter no longer receives the password through an environment
   variable; it resolves the referenced Secret through the Kubernetes API.
 - Sentinel keeps its rewritten configuration on a memory-backed volume rather
@@ -94,7 +96,8 @@ Version 2.0.0 is CLI-only and does not include a Web Console. Use `kubectl` and
 ### Excluded capabilities
 
 Disaster recovery is not supported. The Operator also does not implement
-integrated backup/restore, cross-cluster replication or failover, integrated
+integrated backup/restore, cross-Kubernetes-cluster replication or failover,
+integrated
 large-key inspection reports, or parameter templates. See
 [Current limitations](./limitations.mdx).
 
