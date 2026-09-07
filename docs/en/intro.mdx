@@ -19,7 +19,8 @@ title: Introduction
 Alauda Cache Service E2 deploys and operates Valkey instances on Kubernetes
 through declarative custom resources. The Valkey Operator reconciles the desired
 state, creates the data-plane workloads and Services, and performs lifecycle
-operations such as scaling, configuration updates, upgrades, and node recovery.
+operations such as scaling, configuration updates, upgrades, and member
+recovery.
 
 All instance operations are CLI-based. This product does not provide a Web
 Console. Use `kubectl`, `valkey-cli`, and Kubernetes-native automation.
@@ -48,9 +49,9 @@ another line does not establish product support.
 | Replica | `replica` | Runs one primary-replica group without Sentinel. | Choose 1 member only for non-high-availability use; use at least 2 when replication is required. |
 
 `spec.replicas.replicasOfShard` is a legacy field name. In the implemented
-workload, it is the total member count per Cluster shard, or the total data-node
-count for Failover and Replica. For example, `replicasOfShard: 2` creates one
-primary and one replica after reconciliation.
+workload, it is the total member count per Cluster shard, or the total
+data-member count for Failover and Replica. For example, `replicasOfShard: 2`
+creates one primary and one replica after reconciliation.
 
 ## Implemented capabilities
 

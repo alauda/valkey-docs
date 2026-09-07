@@ -71,6 +71,17 @@ that Operator baseline's 7.2, 8.1, and 9.1 image tags.
   container baseline builds only the three supported lines; earlier baselines
   also carried 8.0 and 9.0 build directories. Product docs label the broader
   schema surface as unsupported.
+- The replication credential directive is not spelled the same on every supported
+  line. The credential-encryption patch registers it as `masterauth` with no
+  alias on 7.2 (`valkey/7.2/alpine/80_alauda_crypto.patch:146`) and as
+  `primaryauth` with `masterauth` as its alias on 8.1 and 9.1
+  (`valkey/8.1/alpine/80_alauda_crypto.patch:147`,
+  `valkey/9.1/alpine/80_alauda_crypto.patch:146`);
+  `internal/builder/config.go` forbids both spellings and records the rename in a
+  comment. `requirepass` is registered with no alias on all three lines. Any
+  passage that tells a reader to inspect the replication credential must name the
+  directive per line: `CONFIG GET primaryauth` returns an empty result on 7.2,
+  which reads as "not set" while the credential is in fact held by `masterauth`.
 - The Helm Chart CRD copy under `charts/valkey-operator/crds` is stale: it omits
   9.0 and 9.1, while the API type and canonical generated CRD include them. A
   2.0.0 release package must install the canonical schema so supported line 9.1

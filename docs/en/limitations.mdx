@@ -31,8 +31,9 @@ defect, not a reason to bypass admission.
 ## Backup, restore, and disaster recovery
 
 The Valkey Operator does not support backup, restore, or disaster recovery. It
-does not provide a backup resource, restore workflow, scheduled backup controller,
-cross-cluster replication, cross-cluster failover, or disaster-recovery API.
+does not provide a backup resource, restore workflow, scheduled backup
+controller, cross-Kubernetes-cluster replication, cross-Kubernetes-cluster
+failover, or a disaster-recovery API.
 High availability within one Kubernetes cluster is not backup or disaster
 recovery. No disaster-recovery procedure is included in this product documentation.
 
@@ -114,15 +115,17 @@ TLS-passphrase directives, are filtered case-insensitively on the Cluster,
 Failover, and Sentinel configuration paths; a case variant cannot bypass the
 Operator-owned list.
 Verify the generated ConfigMap and the effective server configuration. On the
-delivered server images, `CONFIG GET` reports a set `requirepass` or
-`primaryauth` value as a fixed redaction placeholder, not the credential.
+delivered server images, `CONFIG GET` reports a set `requirepass` value, or a
+set replication credential, as a fixed redaction placeholder rather than the
+credential. The replication directive is `masterauth` on 7.2 and `primaryauth`
+on 8.1 and 9.1, where `masterauth` is kept as an alias.
 
 ## Features not implemented by the Operator
 
 - integrated large-key inspection and report export;
 - parameter templates;
 - integrated log viewer;
-- automatic cross-cluster replication or failover;
+- automatic cross-Kubernetes-cluster replication or failover;
 - an Operator-managed backup repository or restore job.
 
 The absence of an integrated large-key report does not prevent a controlled
