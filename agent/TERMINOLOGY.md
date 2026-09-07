@@ -30,6 +30,18 @@ i18n:
 | large key | `valkey-cli --bigkeys` | Key whose size or collection cardinality creates workload-specific operational risk. Do not imply one universal size threshold. |
 | Web Console | — | Unsupported for this product; do not provide UI instructions. |
 
-Valkey and the Valkey logo are trademarks of LF Projects, LLC. Use the Valkey
-mark as an adjective with a generic noun in product-listing text, for example
-“Valkey server 7.2” and “built on Valkey™ technology”.
+## Trademark notice and symbol
+
+Valkey® is a registered trademark of LF Projects, LLC.
+
+Alauda is an independent vendor. This product is not affiliated with, endorsed by, or sponsored by LF Projects, LLC. All trademarks are the property of their respective owners and are used here for identification purposes only.
+
+Those two paragraphs are the notice the ACP component compliance rules require
+verbatim. Reproduce them without rewording: in the product-listing description
+fields, and once in user documentation, where they are the `## Trademarks`
+section of `docs/en/intro.mdx`. Write `Valkey®`, never `Valkey™`: the mark is
+registered, and the symbol belongs at the first usage of the mark in each display
+field. Use the mark as an adjective with a generic noun, for example “Valkey®
+server 7.2” and “built on Valkey® technology”. Code spans naming the API kind
+`Valkey`, the CRD group, image paths, and field names are technical identifiers:
+they carry no symbol and are never renamed.
