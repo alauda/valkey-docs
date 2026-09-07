@@ -19,9 +19,14 @@ that Operator baseline's 7.2, 8.1, and 9.1 image tags.
 
 - The product name is Alauda Cache Service E2, renamed from Alauda Build of
   Valkey: `.artifact/metadata.yaml` `displayName` and the OLM
-  ClusterServiceVersion base, commits `ebb4cbaf` through `0135484d`. The same
-  commits use the Valkey mark as an adjective and carry the upstream notice
-  "Valkey and the Valkey logo are trademarks of LF Projects, LLC."
+  ClusterServiceVersion base, commits `ebb4cbaf` through `0135484d`. Those
+  commits carried the upstream notice "Valkey and the Valkey logo are
+  trademarks of LF Projects, LLC." Commit `8702ca3`, merged to `release-2.0` as
+  `8f7e2cc` on 2026-09-05, replaced that notice in all four listing description
+  fields with the notice the ACP component compliance rules require verbatim, and
+  writes `Valkey®` at the first usage of the mark in every listing field. The
+  current wording is in `TERMINOLOGY.md`. The `valkey-operator` `master` branch
+  still carries the superseded notice until that change is cherry-picked.
 - The next major product release is `2.0.0`: `version:1`.
 - The Operator image map selects Valkey server lines `7.2`, `8.1`, and `9.1`:
   `values.yaml:17-34`. These are the only supported versions in product docs.
