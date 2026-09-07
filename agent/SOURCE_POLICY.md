@@ -26,9 +26,13 @@ For the initial 2.0.0 documentation, the inspected operator baseline is
 `origin/master` commit `20b3b6758fe6f5431e0e183e841d606b935c0853` from
 2026-08-11, together with the product-naming commits up to
 `0135484d90d7bff19bd56fe5d08ed4657fc26df7`, which rename the display title to
-Alauda Cache Service E2, align trademark usage with upstream, and change no
-code. The server-image baseline pinned by the Operator image tags is
-`7cb5874adf2c867dc2fc423435e33edc82226caa`.
+Alauda Cache Service E2 and change no code. The server-image baseline pinned by
+the Operator image tags is `7cb5874adf2c867dc2fc423435e33edc82226caa`.
+
+Trademark wording does not come from the upstream project. `TERMINOLOGY.md`
+carries the notice and the symbol rule that the ACP component compliance rules
+prescribe, and it is the source for every mark, notice, and symbol in these
+documents.
 
 The local `valkey` repository is container-source packaging rather than the
 upstream server source tree. Do not use it as evidence for command or protocol
