@@ -3,7 +3,7 @@
   "generator_version": 3,
   "project_name": "Alauda Cache Service E2 Documentation",
   "summary": "CLI-focused documentation for deploying and operating Valkey on Kubernetes.",
-  "generated_at": "2026-08-12T07:09:47Z",
+  "generated_at": "2026-09-08T06:15:12Z",
   "include_patterns": [
     "**/*.md",
     "**/*.mdx"
@@ -18,7 +18,7 @@
     "**/llmstxt-state.json",
     "README.md",
     "**/.DS_Store",
-    "docs/agent/**",
+    "agent/**",
     "AGENTS.md",
     "CLAUDE.md"
   ],
@@ -54,11 +54,11 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/apis/kubernetes_apis/valkey/valkey.mdx": {
-      "sha256": "701bb8989ce817f960dd7ee52e08052370427a40e5dfce995e55625d77a3d3b7",
-      "size": 3372,
+      "sha256": "95e39ad7f398b9e9f39faedb0f35d4f911aac11c0fd3719dcc4f8898de668985",
+      "size": 3352,
       "description": "API reference for `Valkey`, the high-level namespaced resource used to create and operate an instance, rendering the schema for `valkeys.rds.valkey.buf.red` via the `<K8sCrd>` component. Tabulates the main specification fields - version, architecture, replicas and initial slot plan, resources, custom configurations, modules, storage, access and TLS, Pod annotations, affinity policy, node selector, tolerations, security context, exporter, and Sentinel settings - each with its 2.0.0 boundary, including fields the schema accepts but the implementation ignores. Also documents the status fields, noting that `lastVersion` and `lastShardCount` are reconciliation bookkeeping rather than observed runtime state.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/architecture.mdx": {
       "sha256": "17aee012ebc58333c5113726e0015250003880b04ac253ff35ff32d45f4c51ef",
@@ -68,11 +68,11 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/functions/10-create-instance.mdx": {
-      "sha256": "b9d26027a865df8e56088a0eaed4cc9b80069a9bb419c95443e7412bee324d5a",
-      "size": 5882,
+      "sha256": "d1539464723516ac21b50f087e133c84df03dce14bc9b37c478be30724991c09",
+      "size": 5864,
       "description": "Guide to creating an instance with the high-level `Valkey` custom resource. Lists the decisions to make before creating - architecture, resource requests and limits, persistent storage, and redundancy - then tabulates each main specification field with its required decision, including the note that generated persistent volume claims always request `ReadWriteOnce` and that a StorageClass without a capacity derives twice the memory limit. Provides complete manifests for Cluster, Failover, and Replica instances, followed by verification: watching the phase reach Ready, inspecting child resources and Pods, reading the printed columns, and confirming topology with `CLUSTER INFO` or `INFO replication`.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/functions/15-delete-instance.mdx": {
       "sha256": "337b4f76855aea8cdb56021e365a9cb88c91b36d8bfd7986fa1d3c188c973fc6",
@@ -89,18 +89,18 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/functions/30-parameter.mdx": {
-      "sha256": "c64b7051935d6eda2f0863ec8e4dd04705af7a20fb42d4e741c14f72a57c1037",
-      "size": 6089,
+      "sha256": "a3740cfc437e29ccc4ea889210ce26b7ef128edfaba2a5a9f542fc587bc04921",
+      "size": 6217,
       "description": "Guide to setting Valkey server directives through `spec.customConfigs`, explaining that the Operator renders the configuration, compares it with the last applied version, and either issues `CONFIG SET` to ready nodes or triggers a rolling restart. Lists the checks to perform before changing parameters, shows hot updates and key removal by merge patch, enumerates the restart-required directives, and gives the full Operator-owned forbidden list including credential and TLS passphrase directives, noting that filtering is case-insensitive on every configuration path. Covers Sentinel monitor settings and their unvalidated passthrough, and verification with `CONFIG GET`, including that credential values are redacted on the delivered images.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/functions/40-accessmethod.mdx": {
-      "sha256": "b6ae72b33bdb3a8a4421c4521ffb48f34551bcef2543000b64dc59e0ccfc8bee",
-      "size": 5398,
+      "sha256": "deff743d68621d7c017ad205188937325d7f1c0d0bf36c94d401756e1bbf31a9",
+      "size": 5336,
       "description": "Guide to configuring instance access under `spec.access`. Compares the ClusterIP, NodePort, and LoadBalancer Service types and explains that the Cluster bootstrap Service stays ClusterIP while the requested type applies to generated per-Pod Services. Advises leaving fixed ports unset because the schema and runtime parser formats conflict, shows how to switch access type, gives the in-cluster Service names for each architecture, and covers the single-stack Internet Protocol family preference. Details enabling TLS through cert-manager, the generated `Certificate` and Secret, the requirement for a trusted client certificate, and the certificate subject alternative name boundary that makes redirected Cluster connections unverifiable.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/functions/50-update.mdx": {
       "sha256": "32e6ed0685ef67ebbe280bd84ba8a23d7f29399515725f0dadeba05a239ab619",
@@ -138,18 +138,18 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/functions/90-restart.mdx": {
-      "sha256": "cddfbdf86063a2295d8e5747b3a122c2e72046e7650ca67e35ce5959664ef51d",
-      "size": 1683,
+      "sha256": "1afd131bcf6731c377bee4e585db95a2bb5bf0a4a22068f8b0cd4af5038f0128",
+      "size": 1660,
       "description": "Guide to triggering a rolling restart by setting a new timestamp in the `kubectl.kubernetes.io/restartedAt` Pod annotation, which updates the workload template and replaces Pods; the value must parse as a timestamp and be later than the previously recorded one, so reusing or decreasing it requests nothing. Lists preconditions covering instance readiness, replica and quorum health, absence of concurrent operations, and verified data protection. Shows the patch and the commands to watch progress, then requires verifying connectivity, authentication, slot coverage or primary selection, replication, and metrics rather than trusting Pod timestamps. States that zero downtime is not guaranteed.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/functions/index.mdx": {
-      "sha256": "3e56afcf087473200fd5f2f0c38374ee4116be30c121de7c7af894eae239848f",
-      "size": 83,
+      "sha256": "dafbe89b18730dc8fb38e89b103154975e38598b95237d16faf85dcac7fb0606",
+      "size": 91,
       "description": "Landing page for the feature guides section, rendering an auto-generated overview of the guides via the `<Overview>` component.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/how_to/20-cluster-scaling.mdx": {
       "sha256": "8c601e47f73c488461042c410c283789439387b24588bbeabff5e46d303d8318",
@@ -194,11 +194,11 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/how_to/index.mdx": {
-      "sha256": "37f1ead8d088f993d026018697a91eb6061d8589a9a47bda9133829cc1b0a60b",
-      "size": 82,
+      "sha256": "0fd54c1fc7884ddb74b6965e646f78255b4c50c59e674f3b7e512e07bffc3f8d",
+      "size": 90,
       "description": "Landing page for the how-to section, rendering an auto-generated overview of the operational guides via the `<Overview>` component.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/index.mdx": {
       "sha256": "31a0125363af9bfae0600d518245b18b9e12c0500f59696b84f44b0f57756ebb",
@@ -208,46 +208,46 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/installation.mdx": {
-      "sha256": "b130189c398a2783d205927890210e42b174320d50679584e77b7924d0ecc4b7",
-      "size": 5038,
-      "description": "Installation guide for the Alauda Cache Service E2 version 2.0.0 product package using the CLI workflow supplied for the target Alauda Container Platform environment. Lists prerequisites including cluster permissions for custom resource definitions and admission webhooks, image access, a StorageClass, cert-manager, and a Prometheus-compatible scraper. Provides preflight commands for connectivity, permissions, and storage, then verification steps confirming that the five custom resource definitions are established, that the installed schema admits the supported 9.1 version enum, that the Operator Deployment is available, and that webhooks and their certificates exist. Notes that a stale packaged schema omitting 9.1 is a packaging defect.",
+      "sha256": "d3011be8d1912e8dd32b3b06aa5d45f30e3a2636bedd5bcd1645b0a1351fbb23",
+      "size": 5004,
+      "description": "Installation guide for the Alauda Cache Service E2 version 2.0.0 product package using the CLI workflow supplied for the target Alauda Container Platform environment. Lists prerequisites including Alauda Container Platform v4.2, v4.3, or v4.4, cluster permissions for custom resource definitions and admission webhooks, image access, a StorageClass, cert-manager, and a Prometheus-compatible scraper, and notes that the registry, namespace, channel, and approval strategy come from the delivered release package. Provides preflight commands for connectivity, permissions, and storage, then verification steps confirming that the five custom resource definitions are established, that the installed schema admits the supported 7.2, 8.1, and 9.1 version enum, that the Operator Deployment is available, and that webhooks and their certificates exist.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/intro.mdx": {
-      "sha256": "7d6597ed36432d8f2c7aa566ab5e1b80d3490760112efeac907d132c353d6850",
-      "size": 4141,
-      "description": "Introduces Alauda Cache Service E2, which deploys and operates Valkey instances on Kubernetes through declarative custom resources reconciled by the Valkey Operator. States that the product is CLI-only with no Web Console, lists the supported Valkey server lines 7.2, 8.1, and 9.1 with their `spec.version` values, and warns that 8.0 and 9.0 remain in the schema enum without being supported. Compares the Cluster, Failover, and Replica architectures with their minimum production shapes, explains that `replicasOfShard` is a legacy name for total member count, and enumerates implemented capabilities including scaling, rolling upgrades, ACL users, Service types, TLS, persistent storage, exporter metrics, and hardened credential handling. Closes with the responsibility boundary: no backup, restore, or disaster recovery, and asynchronous replication caveats.",
+      "sha256": "20b346cf29f9465d9b4614cd75ad1eb16d5c489c65463a07bc54a5187eed056d",
+      "size": 5319,
+      "description": "Introduces Alauda Cache Service E2, which deploys and operates Valkey instances on Kubernetes through declarative custom resources reconciled by the Valkey Operator. States that the product is CLI-only with no Web Console, gives the current release 2.0.0 with its 2026-09-08 release date and support on Alauda Container Platform v4.2, v4.3, and v4.4, lists the supported Valkey server lines 7.2, 8.1, and 9.1 with their `spec.version` values, and warns that 8.0 and 9.0 remain in the schema enum with no shipped image. Compares the Cluster, Failover, and Replica architectures, explains that `replicasOfShard` is a legacy name for total member count, and enumerates implemented capabilities. Closes with the responsibility boundary: no backup, restore, or disaster recovery, and asynchronous replication caveats.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/lifecycle_policy.mdx": {
-      "sha256": "e64fb9b546ccac7da2ae876bbcebce8661ed9b49f79496b577ef8fb1fbb21d41",
-      "size": 3381,
-      "description": "Separates published product facts from lifecycle information not yet established for Alauda Cache Service E2. Tabulates the 2.0.0 baseline, noting that release date, end of full support, end of maintenance, and the platform compatibility matrix are unpublished. Distinguishes four version dimensions - product version, API version, server line, and container image - with the command or inspection that reveals each. States the supported-version rule for 7.2, 8.1, and 9.1 with inspected patch baselines 7.2.14, 8.1.9, and 9.1.1, warns that `status.lastVersion` is controller bookkeeping rather than runtime proof, and lists the release-specific inputs required before a production rollout.",
+      "sha256": "4f68c02023227a35777a67ec78456e81a41d27901179f8e2af40957ca03565d5",
+      "size": 5092,
+      "description": "Publishes the support lifecycle for released versions of Alauda Cache Service E2: version 2.0.x was released on 2026-09-08, reaches end of full support on 2027-09-30 and end of maintenance on 2028-09-30, and runs on Alauda Container Platform v4.2, v4.3, and v4.4. States the release policy for patch, minor, and major versions, defines the two support phases - Full Support in year one for all fixes, Maintenance in year two for critical fixes only - and lists the upstream patching, security update, and upgrade assistance commitments. Distinguishes four version dimensions - product version, API version, server line, and container image - with the command that reveals each, states the supported-version rule for 7.2, 8.1, and 9.1 with patch baselines 7.2.14, 8.1.9, and 9.1.1, and lists the release-specific inputs still required before a production rollout.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/limitations.mdx": {
-      "sha256": "8c00abd3283c37bd3f556b894d3dab1a1cddf0ee483ce66ab0acd410c59b6060",
-      "size": 6266,
-      "description": "Catalogues the boundaries of the 2.0.0 baseline: no Web Console, support restricted to Valkey 7.2, 8.1, and 9.1 despite a broader schema enum, and no backup, restore, or disaster recovery. Documents verified implementation defects including the unusable fixed NodePort format, `spec.storage.retainAfterDeleted` having no effect so persistent volume claims always remain after deletion, `spec.storage.accessMode` being ignored in favour of `ReadWriteOnce`, Cluster anti-affinity policies applying only within a shard, and Cluster affinity changes reaching only later-created StatefulSets. Also covers the TLS certificate and client-certificate boundary, unavailable modules, configuration filtering behaviour, and the monitoring integration the shipped ServiceMonitor does not provide.",
+      "sha256": "9e6dcd15e1015c561f7d74c0fd9f3ca26c25a94e79dd7c9ea74b929088fd1007",
+      "size": 6463,
+      "description": "Catalogues the boundaries of Alauda Cache Service E2 version 2.0.0: no Web Console, support restricted to Valkey 7.2, 8.1, and 9.1 despite a broader schema enum for which no image ships, and no backup, restore, or disaster recovery. Documents verified implementation defects including the unusable fixed NodePort format, `spec.storage.retainAfterDeleted` having no effect so persistent volume claims always remain after deletion, `spec.storage.accessMode` being ignored in favour of `ReadWriteOnce`, Cluster anti-affinity policies applying only within a shard, and Cluster affinity changes reaching only later-created StatefulSets. Also covers the TLS certificate and client-certificate boundary, unavailable modules, configuration filtering behaviour, and the monitoring integration the shipped ServiceMonitor does not provide.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/release_notes.mdx": {
-      "sha256": "cdcbd7a61e6a656ff1c1440cb8c3b31ea8b27103d23e39cc8a4979799d4c5f66",
-      "size": 6373,
-      "description": "Release notes for version 2.0.0, listing the supported Valkey lines with their inspected image-source patch baselines, the verified feature scope, and the API and architecture contract including the `rds.valkey.buf.red/v1alpha1` `Valkey` kind and its shard and member ranges. Records operational changes to resource validation, downgrade rejection, exporter defaults, pause and restart annotations, and cert-manager requirements, then details the credential-protection hardening: hashed ACL passwords, encrypted configuration credentials, redacted `CONFIG GET` output, exporter Secret resolution, memory-backed Sentinel configuration, and Pod Security Admission restricted contexts. Closes with excluded capabilities and the known compatibility boundaries carried into this release.",
+      "sha256": "1a9f714f5dfad0d2e584c3e90f2739791d0d42ef693e2668fbb929d19a3de00f",
+      "size": 6978,
+      "description": "Release notes for version 2.0.0, opening with the compatibility and support matrix that pairs Alauda Cache Service E2 v2.0.x with Valkey server lines 7.2, 8.1, and 9.1 and with Alauda Container Platform v4.2, v4.3, and v4.4. Records the 2026-09-08 release date, the inspected image-source patch baselines, the verified feature scope, and the API and architecture contract including the `rds.valkey.buf.red/v1alpha1` `Valkey` kind and its shard and member ranges. Records operational changes to resource validation, downgrade rejection, exporter defaults, pause and restart annotations, and cert-manager requirements, then details the credential-protection hardening: hashed ACL passwords, encrypted configuration credentials, redacted `CONFIG GET` output, exporter Secret resolution, memory-backed Sentinel configuration, and Pod Security Admission restricted contexts. Closes with excluded capabilities and the known compatibility boundaries.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/trouble_shooting/10-instance-not-ready.mdx": {
-      "sha256": "d697cb0c1ab5e34688815e897469e58046c57bce6a70d94691e82198c8e9daef",
-      "size": 5350,
+      "sha256": "dd8b9423caa749340f2b032926e3d6158d8dbddac64d664b057216292fbddce7",
+      "size": 5354,
       "description": "Diagnostic procedure for an instance that remains Initializing, Rebalancing, or Failed, or whose Pods and Services are unavailable. Begins by preserving state rather than restarting or editing child resources, then reproduces admission failures with a server-side dry run and tabulates common validation boundaries and their checks, including that an oversized shard count fails late on the child resource rather than at admission. Works through unschedulable Pods and the anti-affinity node requirements per architecture, pending persistent volume claims, TLS and issuer resources, container and Operator logs, and topology health, closing with the contents of an escalation package.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/trouble_shooting/20-large-key-analysis.mdx": {
       "sha256": "93715e83298e3933dc59546b97e5b1f59559acf5ddfbcbf9abfc1a05161a6ac1",
@@ -257,18 +257,18 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/trouble_shooting/index.mdx": {
-      "sha256": "a40b14454992dc26c736f69f5e35b18025f62ed92c9cb35475aa19c6e7b89609",
-      "size": 93,
+      "sha256": "2076c9e3cb419e83d472983878e332f1e8aa19e74b4e03e4bf8333e73f7aa678",
+      "size": 92,
       "description": "Landing page for the troubleshooting section, rendering an auto-generated overview of the diagnostic guides via the `<Overview>` component.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     },
     "docs/en/upgrade.mdx": {
-      "sha256": "23f7b5d9df9d90f3f868d1200f9fefc45ea38c683ccd66d5485017bfd628d981",
-      "size": 4396,
-      "description": "Procedure for upgrading the Alauda Cache Service E2 package and Valkey Operator, distinct from upgrading the Valkey server line of an existing instance. Covers prerequisites such as confirming a supported upgrade path, verifying that every instance is Ready with no operation in progress, completing external data protection, and recording specifications without exporting Secret values. Provides commands to record current state, apply the release's approved CLI package workflow, and watch the Operator roll out. Verification confirms established custom resource definitions, expected images, instances returning to Ready, and working application traffic. Warns against rolling back the Operator image or schemas independently.",
+      "sha256": "b93dbb16d3289cffaac4c6fcc1f4ba41fafefa48075c4f23cfe87f5233d7b83e",
+      "size": 5135,
+      "description": "Procedure for upgrading the Alauda Cache Service E2 package and Valkey Operator, distinct from upgrading the Valkey server line of an existing instance, and noting that version 2.0.0 has no predecessor product version so the procedure applies from the next 2.0.x release onward. States that v2.0.x runs on Alauda Container Platform v4.2, v4.3, and v4.4 only and is unsupported on v4.1 or earlier. Covers prerequisites such as confirming a supported upgrade path, verifying that every instance is Ready with no operation in progress, completing external data protection, and recording specifications without exporting Secret values. Provides commands to record current state, apply the release's approved CLI package workflow, and watch the Operator roll out. Verification confirms established custom resource definitions, expected images, instances returning to Ready, and working application traffic.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-09-08T06:15:12Z"
     }
   }
 }
