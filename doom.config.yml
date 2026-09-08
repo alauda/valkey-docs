@@ -4,3 +4,9 @@ lang: en
 api:
   crds:
     - docs/shared/crds/*.yaml
+releaseNotes:
+  queryTemplates:
+    mw-valkey-v2.0.0-fixed: |
+      status in (Done, Resolved) AND (labels not in (安全问题) OR labels is EMPTY) AND project = ECO AND fixVersion = Valkey-v2.0.0 AND ReleaseNotesStatus = Publish
+    mw-valkey-v2.0.0-known: |
+      project = ECO AND type = Bug AND ReleaseNotesStatus = Publish AND affectedVersion in (Valkey-v2.0.0) AND fixVersion is EMPTY
