@@ -8,23 +8,55 @@ title: Lifecycle Policy
 
 # Lifecycle Policy
 
-This page distinguishes published product facts from lifecycle information that
-has not yet been established for Alauda Cache Service E2.
+## Version lifecycle timeline
 
-## Current release baseline
+Below is the lifecycle schedule for released versions of Alauda Cache Service E2:
 
-| Item | 2.0.0 status |
-| --- | --- |
-| Product release | Next major release |
-| Supported Valkey server lines | `7.2`, `8.1`, and `9.1` |
-| Release date | Not yet published |
-| End of full support | Not yet published |
-| End of maintenance | Not yet published |
-| Alauda Container Platform compatibility matrix | Not yet published |
+| Version | Release Date | End of Full Support | End of Maintenance |
+|:--------|:-------------|:--------------------|:-------------------|
+| v2.0.x  | 2026-09-08   | 2027-09-30          | 2028-09-30         |
+
+Alauda Cache Service E2 2.0.x runs on Alauda Container Platform v4.2, v4.3, and
+v4.4, and packages the Valkey 7.2, 8.1, and 9.1 server lines. The
+[compatibility and support matrix](./release_notes.mdx#compatibility-and-support-matrix)
+is the single source for that pairing.
 
 Do not derive product support dates from the upstream Valkey lifecycle. Product,
 Operator, server-image, and platform support are separate compatibility
 dimensions.
+
+## Release policy
+
+* A new patch version of Alauda Cache Service E2 is released as needed to address
+  bugs and security vulnerabilities. Patch releases do not introduce new features.
+* Minor and major version releases are driven by significant updates to the
+  underlying Valkey server, the implementation of new features, or emerging
+  security requirements.
+
+## Support phases
+
+Each minor version progresses through two support phases over its lifecycle:
+
+* **Full Support (Year 1)**: From the release date until the end of full support.
+  The version receives all bug fixes and security patches via patch releases on
+  the same minor line.
+* **Maintenance (Year 2)**: From the end of full support until the end of
+  maintenance. The version receives only critical bug fixes and security patches;
+  non-critical fixes are not backported.
+
+After the end of maintenance, the version is no longer supported. Customers
+should plan to upgrade to a supported version before this date.
+
+## Maintenance policy
+
+During a version's supported lifecycle, Alauda provides the following services:
+
+* **Upstream Patching**: We actively track official Valkey patch releases and
+  promptly deliver critical bug fixes and security vulnerability patches.
+* **Security Updates**: We release security updates for the service operator
+  on-demand to address vulnerabilities and ensure stability.
+* **Upgrade Assistance**: We provide dedicated support to help customers execute
+  smooth and seamless upgrades to newer versions.
 
 ## Version dimensions
 
@@ -41,16 +73,23 @@ procedure.
 
 ## Supported-version rule
 
-The 2.0.0 Operator image map selects `7.2`, `8.1`, and `9.1`. The inspected
-image-source baseline builds patch versions 7.2.14, 8.1.9, and 9.1.1. Exact
-patch versions and digests still must be read from the delivered images.
-Generated schema enum values for 8.0 or 9.0 are not a support commitment; do
-not create or upgrade an instance to those values.
+Alauda Cache Service E2 2.0.x supports the Valkey 7.2, 8.1, and 9.1 server
+lines. The 2.0.0 image source builds patch versions 7.2.14, 8.1.9, and 9.1.1.
+Exact patch versions and digests still must be read from the delivered images.
 
-The API source and canonical generated custom resource definition (CRD) include
-9.1, but the inspected Helm Chart CRD copy is stale and omits it. Verify the
-installed CRD during release acceptance; a supported package must admit all
-three supported lines.
+The installed custom resource definition (CRD) also accepts `8.0` and `9.0`,
+because those values remain in the API schema enum. No image is shipped for
+either line: with no entry in the Operator version map they resolve to a bare
+`:8.0` or `:9.0` tag, so they are usable only with a self-supplied image and are
+neither supported nor tested. Do not create or upgrade an instance to those
+values.
+
+Confirm during release acceptance that the installed schema admits all three
+supported lines:
+
+```bash
+kubectl explain valkey.spec.version
+```
 
 Inventory all instance versions with:
 
@@ -68,7 +107,6 @@ out or that every process runs the desired line.
 Before a production rollout or upgrade, obtain the release-specific information
 that is not defined in this repository:
 
-- the final release date and supported platform versions;
 - the supported source-to-target product upgrade paths;
 - component image digests and security advisories;
 - release-specific backup, rollback, and support procedures;

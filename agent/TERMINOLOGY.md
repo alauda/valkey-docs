@@ -29,6 +29,11 @@ i18n:
 | operator-owned resource | — | Child resource generated and reconciled from `Valkey`; users inspect it but change the owning high-level resource. |
 | large key | `valkey-cli --bigkeys` | Key whose size or collection cardinality creates workload-specific operational risk. Do not imply one universal size threshold. |
 | Web Console | — | Unsupported for this product; do not provide UI instructions. |
+| Alauda Container Platform | — | The platform the product is installed on. Always write the full name; do not abbreviate it to ACP in published pages. |
+| Full Support | — | First lifecycle phase of a minor version, from its release date to its end of full support. All bug fixes and security patches are delivered on that minor line. |
+| Maintenance | — | Second lifecycle phase, from end of full support to end of maintenance. Only critical bug fixes and security patches are delivered; non-critical fixes are not backported. |
+| end of full support | — | The date on which a minor version leaves Full Support. Lowercase in prose; title case only as a table column heading. |
+| end of maintenance | — | The date after which a minor version is no longer supported. Lowercase in prose; title case only as a table column heading. |
 
 ## Trademark notice and symbol
 
