@@ -11,9 +11,11 @@ Evidence below refers to `valkey-operator` commit
 `20b3b6758fe6f5431e0e183e841d606b935c0853` (`origin/master`, 2026-08-11) plus
 the code-free product-naming commits up to
 `0135484d90d7bff19bd56fe5d08ed4657fc26df7`.
+Both are ancestors of the shipped tag `v2.0.0`.
 The server-image facts refer to the `valkey` container-source commit
-`7cb5874adf2c867dc2fc423435e33edc82226caa`, which is the commit suffix used by
-that Operator baseline's 7.2, 8.1, and 9.1 image tags.
+`7cb5874adf2c867dc2fc423435e33edc82226caa`. The `v2.0.0` 7.2, 8.1, and 9.1 image
+tags carry the suffix `cf797832`, which is that commit plus one Alpine
+base-image bump and no server change; it still builds 7.2.14, 8.1.9, and 9.1.1.
 
 ## Product contract
 
@@ -27,7 +29,11 @@ that Operator baseline's 7.2, 8.1, and 9.1 image tags.
   writes `Valkey®` at the first usage of the mark in every listing field. The
   current wording is in `TERMINOLOGY.md`. The `valkey-operator` `master` branch
   still carries the superseded notice until that change is cherry-picked.
-- The next major product release is `2.0.0`: `version:1`.
+- The current product release is `2.0.0`: `version:1`, shipped as
+  `valkey-operator` tag `v2.0.0`. It was released on 2026-09-08 and runs on
+  Alauda Container Platform v4.2, v4.3, and v4.4. Release date, lifecycle dates,
+  and platform versions are product-owner requirements with no source-code
+  evidence; see `SOURCE_POLICY.md`.
 - The Operator image map selects Valkey server lines `7.2`, `8.1`, and `9.1`:
   `values.yaml:17-34`. These are the only supported versions in product docs.
   The pinned container source builds patch versions 7.2.14, 8.1.9, and 9.1.1.
@@ -82,10 +88,16 @@ that Operator baseline's 7.2, 8.1, and 9.1 image tags.
   passage that tells a reader to inspect the replication credential must name the
   directive per line: `CONFIG GET primaryauth` returns an empty result on 7.2,
   which reads as "not set" while the credential is in fact held by `masterauth`.
-- The Helm Chart CRD copy under `charts/valkey-operator/crds` is stale: it omits
-  9.0 and 9.1, while the API type and canonical generated CRD include them. A
-  2.0.0 release package must install the canonical schema so supported line 9.1
-  passes admission.
+- The Helm Chart CRD copy under `charts/valkey-operator/crds` is stale at tag
+  `v2.0.0`: it omits 9.0 and 9.1, while the API type and canonical generated CRD
+  include them. That copy is not the delivered artifact. The chart is an upstream
+  directory untouched since commit `d430d34`, referenced by neither the
+  `Makefile` nor `.build/build.yaml`; `.artifact/metadata.yaml` declares
+  `packageType: OperatorBundle`, and `make bundle` generates the bundle from
+  `config/manifests`, which pulls `config/crd/bases`. Product docs therefore
+  require installed-schema verification during release acceptance without
+  attributing the risk to the in-repo chart copy. The stale copy should still be
+  regenerated or removed in `valkey-operator`.
 - `replicasOfShard` is described in API comments as replica count, but builders use
   it as a StatefulSet Pod count. Documentation uses the implemented member-count
   behavior and preserves the literal field name in YAML.

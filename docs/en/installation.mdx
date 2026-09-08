@@ -16,6 +16,8 @@ are not defined by the Valkey Operator repository.
 
 ## Prerequisites
 
+- Alauda Container Platform v4.2, v4.3, or v4.4. Alauda Cache Service E2 version
+  2.0.0 is not supported on v4.1 or earlier;
 - a supported Kubernetes cluster and a `kubectl` context allowed to install the
   chart's cluster-scoped custom resource definitions (CRDs), admission webhooks,
   and role-based access control resources;
@@ -25,10 +27,10 @@ are not defined by the Valkey Operator repository.
   `Issuer` or `ClusterIssuer` is also required when instance TLS is enabled;
 - a Prometheus-compatible scraper if exporter-sidecar metrics will be collected.
 
-Obtain the release-specific platform compatibility matrix before production
-installation. The documentation baseline does not define the supported Alauda
-Container Platform versions, registry address, package namespace, channel, or
-upgrade approval strategy.
+The supported platform versions are listed in the
+[compatibility and support matrix](./release_notes.mdx#compatibility-and-support-matrix).
+The registry address, package namespace, channel, and upgrade approval strategy
+are distribution-specific and come from the delivered release package.
 
 ## Preflight checks
 
@@ -81,11 +83,8 @@ kubectl get crd \
   users.valkey.buf.red
 ```
 
-The inspected 2.0.0 source contains two generated CRD copies that disagree on
-the version enum: the API source and `config/crd/bases` include `9.1`, while the
-Helm Chart CRD copy is stale. A release package that supports 9.1 must install a
-CRD whose enum includes `7.2`, `8.1`, and `9.1`. Verify the installed schema
-before creating an instance:
+A 2.0.0 package must install a `Valkey` CRD whose version enum includes `7.2`,
+`8.1`, and `9.1`. Verify the installed schema before creating an instance:
 
 ```bash
 kubectl explain valkey.spec.version

@@ -15,8 +15,12 @@ official command source as the surrounding section.
 ## Baselines and claim classes
 
 - **P — product requirement:** the product name Alauda Cache Service E2,
-  CLI-only operation, 2.0.0 as the next major release, supported server lines
-  7.2/8.1/9.1, and no disaster recovery.
+  CLI-only operation, supported server lines 7.2/8.1/9.1, and no disaster
+  recovery. For the 2.0.0 release: release date 2026-09-08, a two-year lifecycle
+  ending full support on 2027-09-30 and maintenance on 2028-09-30, and support on
+  Alauda Container Platform v4.2, v4.3, and v4.4, and no predecessor product
+  version — the 2.x line only. These release facts are supplied by the product
+  owner and have no source-code evidence; `SOURCE_POLICY.md` records them.
 - **O — Operator implementation:** `valkey-operator` `origin/master` commit
   `20b3b6758fe6f5431e0e183e841d606b935c0853`, plus the code-free
   product-naming commits up to `0135484d90d7bff19bd56fe5d08ed4657fc26df7`.
@@ -36,8 +40,8 @@ protocol semantics come from the official Valkey documentation.
 
 | Conflict | Evidence | Documentation resolution |
 | --- | --- | --- |
-| Supported 9.1 versus stale packaged custom resource definition (CRD) | O: `api/rds/v1alpha1/valkey_types.go`, `config/crd/bases/rds.valkey.buf.red_valkeys.yaml`, and `charts/valkey-operator/crds/rds.valkey.buf.red_valkeys.yaml` | Declare the P support range, require installed-schema verification, and call a missing 9.1 enum a packaging defect. |
-| Broader 8.0/9.0 source surface | O: high-level enum and image map; I: the pinned baseline builds only 7.2/8.1/9.1 and removed the 8.0/9.0 directories | The image map and P contract are narrower: only 7.2/8.1/9.1 are supported. |
+| Supported 9.1 versus stale in-repo Helm Chart custom resource definition (CRD) copy | O: at tag `v2.0.0`, `api/rds/v1alpha1/valkey_types.go` and `config/crd/bases/rds.valkey.buf.red_valkeys.yaml` enumerate `7.2`/`8.0`/`8.1`/`9.0`/`9.1`, while `charts/valkey-operator/crds/rds.valkey.buf.red_valkeys.yaml` still enumerates `7.2`/`8.0`/`8.1`. The chart is an upstream artifact untouched since `d430d34`, is referenced by neither the `Makefile` nor `.build/build.yaml`, and is not the delivered package: `.artifact/metadata.yaml` declares `packageType: OperatorBundle`, and `make bundle` generates the bundle from `config/manifests`, which pulls `config/crd/bases`. | Declare the P support range and require installed-schema verification during release acceptance. Do not attribute the risk to the in-repo chart copy, which customers never install. |
+| Broader 8.0/9.0 source surface | O: high-level enum and version map at tag `v2.0.0`, whose API comment records that no image is shipped for `8.0`/`9.0` and that without a `VALKEY_VERSION_MAP` entry they resolve to a bare `:8.0`/`:9.0` tag; I: the pinned baseline builds only 7.2/8.1/9.1 and removed the 8.0/9.0 directories | The version map and P contract are narrower: only 7.2/8.1/9.1 are supported; `8.0`/`9.0` are admissible but unshipped, untested, and usable only with a self-supplied image. |
 | Affinity schema versus builders | O: `api/core/types.go`; `internal/builder/clusterbuilder/statefulset.go`; `internal/builder/failoverbuilder/statefulset.go`; the Cluster ensure-resource actor preserving old StatefulSet affinity on update | Document exact builder behavior, mark Cluster custom affinity unreliable, and document that Cluster affinity changes reach only StatefulSets created afterward. |
 | Ignored `spec.storage.accessMode` | O: `api/core/types.go` default plus hard-coded `ReadWriteOnce` in the Cluster and Failover StatefulSet builders | Document the fixed `ReadWriteOnce` access mode and remove the access-mode choice from examples. |
 | Dead `retainAfterDeleted` and PVC ownership | O: value-copy owner-reference loop in both StatefulSet builders; no production PVC-deletion path | Document that PVCs always remain after deletion and require explicit cleanup. |
@@ -56,6 +60,7 @@ protocol semantics come from the official Valkey documentation.
 | Page and section | Claim basis |
 | --- | --- |
 | `index.mdx` — navigation | Site tree only; this landing page contains no product capability claims. |
+| `intro.mdx` — release and server versions | P: release date and supported Alauda Container Platform versions; O: high-level enum and version map. |
 | `intro.mdx` — reconciliation and capabilities | O: high-level controllers, topology actors, service/config/exporter/certificate builders, the credential-protection paths, and APIs; I: `CONFIG GET` redaction. |
 | `intro.mdx` — architectures and member counts | O: webhook/defaulting logic and StatefulSet replica assignments; U: [Cluster specification](https://valkey.io/topics/cluster-spec/), [replication](https://valkey.io/topics/replication/), and [Sentinel](https://valkey.io/topics/sentinel/). |
 | `intro.mdx` — responsibility boundary | P for unsupported backup, restore, disaster recovery, and Web Console; D from asynchronous replication and absence of protection controllers. |
@@ -63,10 +68,13 @@ protocol semantics come from the official Valkey documentation.
 | `architecture.mdx` — Cluster | O: Cluster engine/builders; U: [Cluster specification](https://valkey.io/topics/cluster-spec/). |
 | `architecture.mdx` — Failover and Replica | O: high-level Failover generation, monitor selection, role-Service selectors; U: [replication](https://valkey.io/topics/replication/) and [Sentinel](https://valkey.io/topics/sentinel/). |
 | `architecture.mdx` — storage and status | O: storage API/builders and phase constants/controller assignments; D for failure-domain and data-protection cautions. |
-| `installation.mdx` — prerequisites and defaults | O: Helm values/templates, CRDs, role-based access control, webhook, cert-manager, labels, and metrics Service. Distribution-specific commands remain explicitly unknown. |
+| `installation.mdx` — prerequisites and defaults | P: supported Alauda Container Platform versions. O: Helm values/templates, CRDs, role-based access control, webhook, cert-manager, labels, and metrics Service. Registry, namespace, channel, and approval strategy remain distribution-specific and explicitly unknown. |
+| `upgrade.mdx` — scope and platform compatibility | P: no predecessor product version, supported Alauda Container Platform versions, and the v4.1 exclusion. The product source-to-target upgrade path for later 2.0.x releases remains delegated to release metadata. |
 | `upgrade.mdx` — product upgrade | O: chart resources and API ownership; D from compatibility risk. Package commands and rollback contract are explicitly delegated to release metadata. |
-| `lifecycle_policy.mdx` — version dimensions | P, O `version`/`values.yaml`, O status assignment, and I exact Dockerfile versions. Unpublished dates/matrix are marked unknown. |
+| `lifecycle_policy.mdx` — timeline, compatibility, and support phases | P: release date 2026-09-08, end of full support 2027-09-30, end of maintenance 2028-09-30, and Alauda Container Platform v4.2/v4.3/v4.4. The phase, release, and maintenance wording follows the Alauda Cache Service E1 policy adapted to Valkey. |
+| `lifecycle_policy.mdx` — version dimensions | P, O `version`/`values.yaml`, O status assignment, and I exact Dockerfile versions. |
 | `limitations.mdx` — unsupported and conflicting features | P plus repository-absence checks and each conflict in the release-level table above. |
+| `release_notes.mdx` — compatibility and support matrix | P: release date and supported Alauda Container Platform versions; O: supported server lines. |
 | `release_notes.mdx` — 2.0.0 scope | P, O implemented feature paths including the credential-protection hardening, I exact patch baseline and `CONFIG GET` redaction, and the recorded source conflicts. |
 
 ## Feature guides
