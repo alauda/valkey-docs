@@ -12,15 +12,29 @@ This procedure covers the Alauda Cache Service E2 package and Valkey Operator. I
 does not upgrade the Valkey server line of an existing instance. For that change,
 follow [Upgrade Valkey](./how_to/30-upgrade.mdx).
 
+Version 2.0.0 has no predecessor product version, so this procedure applies from
+the next 2.0.x release onward. To set up a new environment, follow
+[Install](./installation.mdx) instead.
+
 The exact package upload and upgrade command depends on the Alauda Container
 Platform distribution. It is not defined by the `valkey-operator` repository.
 Use the approved CLI workflow from the delivered 2.0.0 release package; there is
 no Web Console procedure for this product.
 
+## Platform compatibility
+
+Alauda Cache Service E2 2.0.x runs on Alauda Container Platform v4.2, v4.3, and
+v4.4 only. It is not supported on v4.1 or earlier: upgrade the platform to v4.2
+or later before installing or upgrading Alauda Cache Service E2. The
+[compatibility and support matrix](./release_notes.mdx#compatibility-and-support-matrix)
+lists the supported pairings, and [Lifecycle Policy](./lifecycle_policy.mdx) the
+support phases for each product version.
+
 ## Before you begin
 
-1. Confirm that the source and target product versions form a supported upgrade
-   path in the release-specific compatibility matrix.
+1. Confirm that the target cluster runs a supported Alauda Container Platform
+   version, and that the source and target product versions form a supported
+   upgrade path in the release-specific compatibility matrix.
 2. Confirm that every managed instance is `Ready` and that no scaling, restart,
    certificate, configuration, or server-version operation is running.
 3. Complete and test the external data-protection procedure for persistent data.

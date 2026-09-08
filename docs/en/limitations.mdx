@@ -8,7 +8,7 @@ title: Current Limitations
 
 # Current Limitations
 
-The following boundaries apply to the 2.0.0 documentation baseline.
+The following boundaries apply to Alauda Cache Service E2 version 2.0.0.
 
 ## Management interface
 
@@ -18,15 +18,15 @@ automation.
 ## Server versions
 
 Only Valkey 7.2, 8.1, and 9.1 are supported. An installed custom resource
-definition (CRD) may still accept `8.0` or `9.0` for compatibility with upstream
-API history. That does not establish product support: the 2.0.0 Operator image
-map selects only 7.2, 8.1, and 9.1, and the pinned image source builds only
-those three lines.
+definition (CRD) still accepts `8.0` and `9.0` because those values remain in
+the API schema enum. That does not establish product support: no image is
+shipped for either line, so without an entry in the Operator version map they
+resolve to a bare `:8.0` or `:9.0` tag and are usable only with a self-supplied
+image. The pinned image source builds only 7.2, 8.1, and 9.1.
 
-The inspected Helm Chart CRD copy is stale and omits `9.0` and `9.1`, while the
-API source and canonical generated CRD include both. Verify that the delivered
-2.0.0 package installs a schema that admits 9.1. A missing 9.1 enum is a package
-defect, not a reason to bypass admission.
+Verify during release acceptance that the delivered 2.0.0 package installs a
+schema that admits 9.1. A missing 9.1 enum is a package defect, not a reason to
+bypass admission.
 
 ## Backup, restore, and disaster recovery
 
