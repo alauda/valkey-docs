@@ -27,6 +27,19 @@ official command source as the surrounding section.
 - **I — image implementation:** `valkey` commit
   `7cb5874adf2c867dc2fc423435e33edc82226caa`, pinned by the Operator image tags.
 - **U — upstream behavior:** official Valkey command, topic, and client pages.
+- **S — upstream server source:** format constants and the code that gates them,
+  read at an exact released tag and cited by file and line. Used only where the
+  official documentation states no number: `valkey-io/valkey` `7.2.14`, `8.1.9`,
+  and `9.1.1`, and — for the source side of a Redis comparison only —
+  `redis/redis` `6.0.20`, `7.2.16`, and `8.4.0`. See `SOURCE_POLICY.md` class 7.
+- **E1 — sibling product implementation:** `redis-operator` and its packaged
+  images, cited by file and line. Used only to state what a migration source
+  looks like, never to claim a capability of this product.
+- **V — runtime verification:** behavior observed on delivered images running
+  under both Operators on a real cluster, recorded with the commands used and
+  the exact server replies. It confirms a claim already sourced from O, I, S, or
+  U; it never substitutes for one, because a single environment cannot establish
+  a product contract.
 - **D — derived operational rule:** a conclusion whose premises are cited in the
   same row. Derived rules use conditional wording and do not claim an Operator
   guarantee.
@@ -74,6 +87,7 @@ protocol semantics come from the official Valkey documentation.
 | `lifecycle_policy.mdx` — timeline, compatibility, and support phases | P: release date 2026-09-08, end of full support 2027-09-30, end of maintenance 2028-09-30, and Alauda Container Platform v4.2/v4.3/v4.4. The phase, release, and maintenance wording follows the Alauda Cache Service E1 policy adapted to Valkey. |
 | `lifecycle_policy.mdx` — version dimensions | P, O `version`/`values.yaml`, O status assignment, and I exact Dockerfile versions. |
 | `limitations.mdx` — unsupported and conflicting features | P plus repository-absence checks and each conflict in the release-level table above. |
+| `limitations.mdx` — migration from other products | O: absence of an import controller, restore workflow, or external-primary field, and the `internal/builder/config.go` forbidden entries for `replicaof`, `slaveof`, `dir`, and `dbfilename`; S: the reserved RDB format-version and payload-type ranges. |
 | `release_notes.mdx` — compatibility and support matrix | P: release date and supported Alauda Container Platform versions; O: supported server lines. |
 | `release_notes.mdx` — 2.0.0 scope | P, O implemented feature paths including the credential-protection hardening, I exact patch baseline and `CONFIG GET` redaction, and the recorded source conflicts. |
 
@@ -106,6 +120,19 @@ protocol semantics come from the official Valkey documentation.
 | `20-cluster-scaling.mdx` | O Cluster engine slot migration and shard workload changes; U: [Cluster specification](https://valkey.io/topics/cluster-spec/), [`CLUSTER INFO`](https://valkey.io/commands/cluster-info/), and [`CLUSTER NODES`](https://valkey.io/commands/cluster-nodes/). |
 | `30-upgrade.mdx` | O high-level version propagation and downgrade validation; U target-version [commands](https://valkey.io/commands/) and [`INFO`](https://valkey.io/commands/info/); forward matrix explicitly unknown. |
 | `40-cluster-slots-distribution.mdx` | O create validation and Cluster engine initialization; U: [`CLUSTER SHARDS`](https://valkey.io/commands/cluster-shards/) and [Cluster specification](https://valkey.io/topics/cluster-spec/). |
+| `50-migrate-from-redis.mdx` — Operator boundary | O: no import controller, restore workflow, or external-primary field anywhere in `api/`, `internal/`, `pkg/`, or `cmd/`; `internal/builder/config.go` forbids `replicaof`, `slaveof`, `dir`, and `dbfilename`. |
+| `50-migrate-from-redis.mdx` — serialization format and matrix | S: `RDB_VERSION` and the `RDB_FOREIGN_VERSION_MIN`/`MAX` and `RDB_FOREIGN_TYPE_MIN`/`MAX` constants in `src/rdb.h`, the `RDB_TYPE_*` code lists and version gates in `src/rdb.h` and `src/rdb.c`, `verifyDumpPayload` in `src/cluster.c`, and the `rdb-version-check` default in `src/config.c`, at each cited tag (Redis 6.0.20 defines type codes 0-15 only; 7.2.16 and 8.4.0 reach 21 and 25); I: the patch versions the delivered image tags build. The nine-cell matrix is D from those gates, and V: on a live cluster the delivered 6.0.22, 7.2.16, 8.1.9 and 9.1.1 images reported footer versions 9, 11, 11 and 80; Redis 6.0 and 7.2 datasets ported whole into 8.1 and 9.1; and a payload differing only in its footer version was accepted at 11 and refused at 12 on both target lines. |
+| `50-migrate-from-redis.mdx` — unsupported dataset content | O: ConfigMap builders render `loadmodule` only; I: the installed-file set supplies no module. P: active-active has no counterpart in this product. S: the hash field-expiration type codes on both sides. |
+| `50-migrate-from-redis.mdx` — specification translation | E1: `redis-operator` `api/middleware/v1/redis_types.go` field set and its `values.yaml` image map; O: `api/rds/v1alpha1/valkey_types.go` and `api/core/types.go`. Every unmapped row is an absence check against the target API. |
+| `50-migrate-from-redis.mdx` — one-shot copy and window sizing | O: absence of any replication or change-stream path, and the `replicaof`/`slaveof` forbidden entries; V: 20,000 small string keys copied into a three-shard Cluster target in 38 s on an idle cluster, quoted as an order of magnitude only. D: the outage equals the copy duration. |
+| `50-migrate-from-redis.mdx` — `COPY`/`--cluster-copy` | U: [`MIGRATE`](https://valkey.io/commands/migrate/) moves a key unless `COPY` is given; V: without `COPY` the source went from 210 keys to 0, and with `COPY REPLACE` it retained all 302 while the target received 302 with time to live intact; `--cluster-copy` likewise retained a 20,000-key source. |
+| `50-migrate-from-redis.mdx` — Cluster-wide counting and clearing | V: on a three-shard target, `FLUSHALL` sent to the bootstrap Service reduced the total from 20,102 to 13,373 — one shard — and `DBSIZE` likewise answers for the serving node only. |
+| `50-migrate-from-redis.mdx` — choosing the target version | O: the downgrade-rejecting webhook comparison; S: `RDB_VERSION` 80 on `valkey-io/valkey` `9.1.1` versus 11 on `8.1.9` and `7.2.14`; V: a same dataset copied whole into 7.2, 8.1 and 9.1 targets with no procedural difference (Redis 7.2 -> Valkey 7.2 505/505; Redis 6.0 -> Valkey 7.2 20,000/20,000; Redis Cluster -> Valkey 7.2 Cluster 2,675/2,675); `CONFIG SET rdb-version-check` on 7.2 returns `ERR Unknown option`; and a format-80 payload taken from 9.1 was refused by 8.1, by 7.2 and by Redis 7.2 while restoring into 9.1 itself. |
+| `50-migrate-from-redis.mdx` — procedure matrix and the cross-slot rule | U: [`MIGRATE`](https://valkey.io/commands/migrate/) multi-key form and [`CLUSTER GETKEYSINSLOT`](https://valkey.io/commands/cluster-getkeysinslot/); V: a `SCAN`-batched `MIGRATE ... KEYS` out of a Redis Cluster source failed every batch with `CROSSSLOT Keys in request don't hash to the same slot`, while the same dataset copied whole (2,675/2,675, 0 failures) once batched per slot — into a Failover target and into a Cluster target alike, with source retained, types, hash-tag grouping and time to live intact. The deciding factor is the source's cluster mode, not the target's. |
+| `50-migrate-from-redis.mdx` — slot-walk cost | V: 2,675 keys over 2,346 occupied slots took ~260 s into a Cluster target and ~300 s into a Failover target, ~60 ms per slot over all 16,384, dominated by per-call connection setup in the sketch given. Quoted as an order of magnitude with the measurement conditions stated. |
+| `50-migrate-from-redis.mdx` — copy procedure | U: [`MIGRATE`](https://valkey.io/commands/migrate/), [`RESTORE`](https://valkey.io/commands/restore/), [`SCAN`](https://valkey.io/commands/scan/), and [Valkey CLI](https://valkey.io/topics/cli/); S: `clusterManagerCommands[]` in `src/valkey-cli.c` for the `--cluster import` subcommand and its credential options. The procedure is not run by the Operator and carries no Operator guarantee. |
+| `50-migrate-from-redis.mdx` — client re-pointing | O: `internal/builder/failoverbuilder/service.go` and `internal/builder/clusterbuilder/service.go` name generators, and the hardcoded `mymaster` monitor name in `internal/controller/failover_controller.go`; E1: the corresponding `redis-operator` generators. |
+| `50-migrate-from-redis.mdx` — cutover and rollback | D from the absence of any rollback path, plus the recorded PVC-retention behavior. |
 | `access/index.mdx` | Site tree only; this landing page contains no product capability claims. |
 | `access/10-failover.mdx` | O role selectors, Sentinel/Replica generation, TLS DNS names; U: [replication](https://valkey.io/topics/replication/), [Sentinel](https://valkey.io/topics/sentinel/), [TLS](https://valkey.io/topics/encryption/), and [clients](https://valkey.io/clients/). |
 | `access/20-cluster.mdx` | O bootstrap/per-Pod Services and announced endpoints; U: [Cluster specification](https://valkey.io/topics/cluster-spec/), [`CLUSTER SHARDS`](https://valkey.io/commands/cluster-shards/), [TLS](https://valkey.io/topics/encryption/), and [clients](https://valkey.io/clients/). |
