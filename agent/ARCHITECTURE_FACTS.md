@@ -118,6 +118,27 @@ base-image bump and no server change; it still builds 7.2.14, 8.1.9, and 9.1.1.
   backup/restore controller, cross-cluster replication or failover implementation,
   disaster-recovery API, integrated large-key inspection, parameter-template API,
   or Web Console. Do not migrate those Redis guides.
+- Migration from Redis is not an Operator capability, and the migration boundary
+  is set by the on-disk serialization format rather than by the Operator. The
+  Operator supplies no import controller, no restore workflow, and no external
+  primary field; `replicaof`, `slaveof`, `dir`, and `dbfilename` are all on the
+  `internal/builder/config.go` forbidden list, which removes both the
+  replication-based and the file-based import routes. The format boundary is
+  upstream: Valkey 8.1.9 and 9.1.1 reserve RDB format versions 12–79
+  (`RDB_FOREIGN_VERSION_MIN`/`MAX`, `src/rdb.h`) and payload type codes 22–243
+  (`RDB_FOREIGN_TYPE_MIN`/`MAX`) as foreign and refuse them. Redis 6.0.20 writes
+  format 9 and Redis 7.2.16 writes format 11, both accepted; Redis 8.4.6 writes
+  format 12 and is refused on every supported line. Redis numbers its hash
+  field-expiration types 22–25 (added in 7.4) while Valkey numbers its own
+  `RDB_TYPE_HASH_2` 22 (added in 9.0), so the same code denotes incompatible
+  encodings — that collision is the reason for the reserved ranges. Valkey 7.2.14
+  has no foreign concept and simply refuses any version above 11. The
+  `rdb-version-check` parameter (default `strict` on 8.1 and 9.1, absent on 7.2)
+  does not lift the boundary: on 8.1 the foreign-range rejection in
+  `verifyDumpPayload` is not gated on it, and on 9.1 relaxing it only moves the
+  rejection to the foreign-type guard. It is not on the Operator's forbidden or
+  restart-required lists, so `spec.customConfigs` accepts it; documentation must
+  say that accepting it does not make the migration work.
 - The shipped ServiceMonitor selects the operator metrics Service, not Valkey
   data-plane Services. The exporter is implemented, but data-plane scrape
   integration is environment-specific.

@@ -21,6 +21,14 @@ Use evidence in this order:
 6. Official Valkey documentation for command, protocol, persistence, replication,
    access control list, TLS, and client-library behavior; official Kubernetes,
    cert-manager, and Prometheus Operator documentation for their own APIs.
+7. Upstream server source at the exact released tag, for on-the-wire and on-disk
+   format facts that the documentation does not state numerically — currently the
+   RDB format-version and payload-type constants. Cite the repository, tag, file,
+   and line (`valkey-io/valkey` `9.1.1` `src/rdb.h:52`). This class is limited to
+   constants and the code that gates them; do not use it to describe behavior the
+   official documentation covers in prose, and do not use an unstable branch. Where
+   a claim concerns a Redis source line, the corresponding `redis/redis` tag is
+   evidence for that side of the comparison only.
 
 For the initial 2.0.0 documentation, the inspected operator baseline is
 `origin/master` commit `20b3b6758fe6f5431e0e183e841d606b935c0853` from
