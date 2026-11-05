@@ -10,6 +10,8 @@ i18n:
 | Canonical name | API literal or abbreviation | Usage |
 | --- | --- | --- |
 | Alauda Cache Service E2 | — | Product name. Renamed from “Alauda Build of Valkey”; do not use the former name in new text. |
+| Alauda Cache Service E1 | — | The sibling product built on Redis® OSS, the releases up to and including Redis server 7.2, and the source of the migration guide. Write “built on Redis® OSS”, not “Redis® technology”. Write the full name wherever text means that product, its instances, its Operator, its API, or its packages. Do not write “the Redis product” or “a Redis deployment”. |
+| Redis server | `Redis`, `redis_exporter`, `RDB_TYPE_*` | The upstream server software, named only to identify it by version, as in “Redis server 7.2”. Always an adjective with a generic noun; never a noun, verb, or possessive. Code spans are technical identifiers: they carry no symbol and are never renamed. |
 | Valkey Operator | — | Kubernetes operator delivered with the product. |
 | Valkey | `Valkey`, `vk` | High-level namespaced custom resource. |
 | Cluster architecture | `spec.arch: cluster` | Sharded deployment using 16,384 hash slots. |
@@ -50,3 +52,26 @@ field. Use the mark as an adjective with a generic noun, for example “Valkey®
 server 7.2” and “built on Valkey® technology”. Code spans naming the API kind
 `Valkey`, the CRD group, image paths, and field names are technical identifiers:
 they carry no symbol and are never renamed.
+
+## Redis trademark notice and symbol
+
+Redis® is a registered trademark of Redis Ltd. Any rights therein are reserved to Redis Ltd. Any use by Alauda is for referential purposes only and does not indicate any sponsorship, endorsement or affiliation between Redis Ltd. and Alauda.
+
+Alauda is an independent vendor. This product is not affiliated with, endorsed by, or sponsored by Redis Ltd. All trademarks are the property of their respective owners and are used here for identification purposes only.
+
+Those two paragraphs are the notice Alauda Cache Service E1 already ships, verbatim:
+`redis-docs` `docs/en/intro.mdx` and `redis-operator` `.artifact/metadata.yaml`.
+Reproduce them without rewording. Unlike the Valkey notice, they are not placed
+once in `docs/en/intro.mdx`: the Redis trademark policy
+(<https://redis.io/legal/trademark-policy/>, last updated 2026-09-15) asks for the
+attribution on each page where the mark appears, at the bottom of that page. They
+are the `## Trademarks` section of `docs/en/how_to/50-migrate-from-redis.mdx`.
+
+Keep the mark off every other page. Name the product Alauda Cache Service E1
+instead, and write “snapshot (RDB)” where a page needs the format but not the
+expansion. A new page that must use the mark takes the same notice at its bottom.
+Write `Redis®` at the first usage of the mark on a page. The policy text reads
+“always add the registration symbol”; first usage is the product owner's decision
+of 2026-11-05, and it matches the Valkey rule above.
+Do not call this product compatible with Redis server software: the policy bars a
+fork from that wording.
