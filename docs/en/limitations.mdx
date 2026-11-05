@@ -37,6 +37,22 @@ failover, or a disaster-recovery API.
 High availability within one Kubernetes cluster is not backup or disaster
 recovery. No disaster-recovery procedure is included in this product documentation.
 
+## Migration from other products
+
+The Operator provides no migration capability: there is no import controller, no
+restore workflow, and no field on `Valkey` that points at an external primary.
+Replication-based import and file-level import are both unavailable, because
+`replicaof`, `slaveof`, `dir`, and `dbfilename` are forbidden configuration keys
+and the data volume is operator-owned.
+
+Moving an existing Alauda Cache Service E1 instance onto this product is
+therefore a client-driven key copy that you run yourself, not a product feature.
+The serialization format also sets a hard boundary: every supported Valkey line
+refuses a snapshot (RDB) format version from 12 through 79, so an instance whose
+server writes one of those formats cannot be copied. See [Migrate from Alauda
+Cache Service E1](./how_to/50-migrate-from-redis.mdx) for which server lines that
+affects, the full matrix, and the procedure.
+
 ## Fixed NodePort assignment
 
 `spec.access.ports` exists in the API, but the inspected 2.0.0 source has

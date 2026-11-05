@@ -10,6 +10,8 @@ i18n:
 | Canonical name | API literal or abbreviation | Usage |
 | --- | --- | --- |
 | Alauda Cache Service E2 | — | Product name. Renamed from “Alauda Build of Valkey”; do not use the former name in new text. |
+| Alauda Cache Service E1 | — | The sibling product built on Redis® OSS, the releases up to and including Redis server 7.2, and the source of the migration guide. Write “built on Redis® OSS”, not “Redis® technology”. Write the full name wherever text means that product, its instances, its Operator, its API, or its packages. Do not write “the Redis product” or “a Redis deployment”. |
+| Redis server | `Redis`, `redis_exporter`, `RDB_TYPE_*` | The upstream server software, named only to identify it by version, as in “Redis server 7.2”. Always an adjective with a generic noun; never a noun, verb, or possessive. Code spans are technical identifiers: they carry no symbol and are never renamed. |
 | Valkey Operator | — | Kubernetes operator delivered with the product. |
 | Valkey | `Valkey`, `vk` | High-level namespaced custom resource. |
 | Cluster architecture | `spec.arch: cluster` | Sharded deployment using 16,384 hash slots. |
@@ -26,6 +28,11 @@ i18n:
 | rolling restart | — | Sequential Pod replacement triggered by configuration, version, template, or restart annotation changes. |
 | Cluster-aware client | `valkey-cli -c` | Client that discovers Cluster topology and follows `MOVED` and `ASK` redirections. |
 | server line | `spec.version` | Supported Valkey major/minor line packaged by the product, such as 8.1; not the exact container patch build. |
+| RDB format | `RDB_VERSION`, `RDB_TYPE_*` | The serialization format of `DUMP`, `RESTORE`, and `MIGRATE` payloads. Expand it as “Redis Database (RDB)” at first use, but only on a page that carries the Redis notice, because the expansion uses the mark. |
+| snapshot (RDB) | — | The same format on a page that stays free of the Redis mark, such as `limitations.mdx`. Do not expand it there. |
+| foreign range | `RDB_FOREIGN_VERSION_MIN`/`MAX`, `RDB_FOREIGN_TYPE_MIN`/`MAX` | Format versions 12–79 and payload type codes 22–243, which Valkey reserves and refuses. The word follows Valkey's own source constants. |
+| hash field expiration | — | A time to live on an individual hash field. Redis server 7.4 and Valkey 9.0 each added it with incompatible encodings. Do not use it for key expiration. |
+| migrate | `MIGRATE` | The verb for moving data from Alauda Cache Service E1 onto this product. Do not use “port”. The `MIGRATE` command moves a key unless given `COPY`, so keep the command in a code span and do not read the verb as that command. |
 | operator-owned resource | — | Child resource generated and reconciled from `Valkey`; users inspect it but change the owning high-level resource. |
 | large key | `valkey-cli --bigkeys` | Key whose size or collection cardinality creates workload-specific operational risk. Do not imply one universal size threshold. |
 | Web Console | — | Unsupported for this product; do not provide UI instructions. |
@@ -50,3 +57,26 @@ field. Use the mark as an adjective with a generic noun, for example “Valkey®
 server 7.2” and “built on Valkey® technology”. Code spans naming the API kind
 `Valkey`, the CRD group, image paths, and field names are technical identifiers:
 they carry no symbol and are never renamed.
+
+## Redis trademark notice and symbol
+
+Redis® is a registered trademark of Redis Ltd. Any rights therein are reserved to Redis Ltd. Any use by Alauda is for referential purposes only and does not indicate any sponsorship, endorsement or affiliation between Redis Ltd. and Alauda.
+
+Alauda is an independent vendor. This product is not affiliated with, endorsed by, or sponsored by Redis Ltd. All trademarks are the property of their respective owners and are used here for identification purposes only.
+
+Those two paragraphs are the notice Alauda Cache Service E1 already ships, verbatim:
+`redis-docs` `docs/en/intro.mdx` and `redis-operator` `.artifact/metadata.yaml`.
+Reproduce them without rewording. Unlike the Valkey notice, they are not placed
+once in `docs/en/intro.mdx`: the Redis trademark policy
+(<https://redis.io/legal/trademark-policy/>, last updated 2026-09-15) asks for the
+attribution on each page where the mark appears, at the bottom of that page. They
+are the `## Trademarks` section of `docs/en/how_to/50-migrate-from-redis.mdx`.
+
+Keep the mark off every other page. Name the product Alauda Cache Service E1
+instead, and write “snapshot (RDB)” where a page needs the format but not the
+expansion. A new page that must use the mark takes the same notice at its bottom.
+Write `Redis®` at the first usage of the mark on a page. The policy text reads
+“always add the registration symbol”; first usage is the product owner's decision
+of 2026-11-05, and it matches the Valkey rule above.
+Do not call this product compatible with Redis server software: the policy bars a
+fork from that wording.

@@ -24,13 +24,15 @@ Secrets in the same namespace as the instance.
 - Custom users cannot receive the `ACL` command. The webhook removes or denies
   ACL-management permission to prevent privilege escalation.
 
-The Operator also maintains `default` and `operator` accounts for an instance.
-The `operator` account is reserved for reconciliation and must not be used by
-applications or modified manually. In the inspected baseline, the `default`
-account is generated without a password, and its ACL rule disallows the `acl`,
-`flushall`, `flushdb`, and `keys` commands. An application that needs one of
-those disallowed data commands must use a custom user whose rule grants it;
-ACL management itself cannot be granted.
+The Operator also maintains an `operator` account for each instance. It is
+reserved for reconciliation and must not be used by applications or modified
+manually.
+
+Every instance also has the built-in `default` account, which has no `User`
+resource. In the inspected baseline it has no password and its rule is
+`+@all ~* &*`, so any client that can reach the instance can run every command,
+including `acl`, `flushall`, `flushdb`, and `keys`, without authenticating. Treat
+network access to the instance's Services as full access to its data.
 
 The webhook accepts an Operator-defined subset of Valkey access control list
 (ACL) rule syntax and command categories. Validate every rule with a server-side

@@ -1,0 +1,788 @@
+---
+weight: 50
+i18n:
+  title:
+    zh: 从 Alauda Cache Service E1 迁移
+  additionalPrompts: |
+    Keep the product names Alauda Cache Service E1 and Alauda Cache Service E2 in
+    English.
+    The two paragraphs under the "## Trademarks" heading are a required legal
+    notice. Reproduce them in English, verbatim and in the same order, exactly as
+    they appear in the source. Do not translate, reword, shorten, or drop them.
+title: Migrate from Alauda Cache Service E1
+---
+
+# Migrate from Alauda Cache Service E1
+
+This guide moves an existing Alauda Cache Service E1 instance onto Alauda Cache
+Service E2. It covers the two redundant architectures:
+
+- a Sentinel instance onto a `Valkey` instance with `spec.arch: failover`;
+- a Cluster instance onto a `Valkey` instance with `spec.arch: cluster`.
+
+## Names on this page \{#product-names}
+
+Alauda Cache Service E1 is the product on Alauda Container Platform built on
+Redis® OSS, the releases up to and including Redis server 7.2. Alauda Cache
+Service E2 is built on Valkey® technology. This page uses the product name
+wherever it means that product: its instances, Operator, API, Services, and
+packaged images. It uses the Redis name only to
+identify the server software itself by version, as in Redis server 7.2, and the
+Redis Database (RDB) format.
+
+Identifiers do not change with the product name. The `Redis` kind, the
+`middleware.alauda.io` API group, and the generated Service names are what the
+source cluster reports, so they appear here exactly as you type them. The
+trademark notices are at the [end of this page](#trademarks).
+
+## Scope \{#scope}
+
+Source lines in scope are Redis server 6.0 and 7.2, the lines Alauda Cache
+Service E1 delivers. Redis server 8.4 appears on this page only as a blocked
+case: the v5.0 packages included it, and it is removed from later versions.
+Target lines are the Valkey 7.2, 8.1, and 9.1 lines this product supports.
+Standalone instances are out of scope here; they map to `spec.arch: replica` and
+follow the same data steps.
+
+Read [Confirm the serialization format](#serialization-format) before planning
+anything else. A Redis server 8.4 source cannot reach any target line: three of
+the nine source-to-target combinations are blocked by the on-disk format itself,
+and no procedure on this page works around it.
+
+## What the Operator does and does not do \{#operator-boundary}
+
+The Valkey Operator has no migration capability. There is no import controller,
+no restore workflow, no backup repository, and no field on `Valkey` that points
+at an external primary. The `Valkey` resource describes a new, empty instance.
+
+A migration is therefore a client-driven data copy that you run yourself, with
+the same CLI tools you use for any other administrative task. Two consequences
+matter before you start:
+
+- **Replication-based import is not available.** `replicaof` and `slaveof` are
+  on the Operator's forbidden-configuration list, so you cannot attach a
+  product-managed instance to an external primary through
+  `spec.customConfigs`. The forbidden list is applied to the Cluster, Failover,
+  and Sentinel configuration paths.
+- **File-level import is not available.** `dir` and `dbfilename` are forbidden
+  as well, and the data volume is operator-owned. There is no supported way to
+  place a source dump file where a managed server would read it at startup.
+
+What remains, and what this page documents, is a logical key-level copy driven
+from a client. Plan for a maintenance window: the copy is not transactional and
+the product provides no dual-write or cutover mechanism.
+
+## Confirm the serialization format \{#serialization-format}
+
+Every `MIGRATE`- or `RESTORE`-based copy — including
+`valkey-cli --cluster import`, which is built on `MIGRATE` — carries an RDB
+serialization payload, and the target validates that payload's format version
+before accepting it. This is the first thing to check, because it decides
+whether a migration is possible at all. Re-creating keys through your own
+application writes no such payload and is not subject to this check.
+
+### Format versions of each line \{#format-versions}
+
+| Server line | Build | RDB format version |
+| --- | --- | --- |
+| Redis server 6.0 | 6.0.23 | 9 |
+| Redis server 7.2 | 7.2.17 | 11 |
+| Redis server 8.4 | 8.4.6 | 12 |
+| Valkey 7.2 | 7.2.14 | 11 |
+| Valkey 8.1 | 8.1.9 | 11 |
+| Valkey 9.1 | 9.1.1 | 80 |
+
+Each build is the version string a delivered Alauda Cache Service E1 or E2 image
+reports, not an upstream release tag. The format version did not change across
+the patch builds inspected for these lines.
+
+Valkey 9.0 moved to high format numbers deliberately, and both Valkey 8.1 and
+9.1 reserve versions **12 through 79** as a *foreign* range that they refuse.
+Redis server 8.4 writes version 12, the first value of that reserved range.
+
+### Why Redis server 8.4 is the blocked case \{#redis-84-blocked}
+
+The two projects independently assigned the same type codes to different
+encodings after the fork:
+
+- Redis server 7.4 introduced hash field expiration, and its source numbers the
+  payload types 22 through 25: two pre-release variants, then
+  `RDB_TYPE_HASH_METADATA` and `RDB_TYPE_HASH_LISTPACK_EX`. Redis server 8.4
+  writes 24 and 25.
+- Valkey 9.0 introduced hash field expiration and numbers its payload type 22
+  (`RDB_TYPE_HASH_2`).
+
+The same range of codes therefore means one thing in a Redis server 8.4 payload
+and a different thing in a Valkey 9.1 payload. Valkey guards against the
+confusion by reserving both the format-version range and the type-code range
+22–243 as foreign, and refusing to interpret either.
+
+Below 22, the two projects still agree: every type code both define in the range
+0 to 21 carries the same meaning, and Redis server 6.0 defines only 0 to 15. That
+is why the older server lines migrate cleanly and 8.4 does not.
+
+### Source-to-target matrix \{#migration-matrix}
+
+| Source | To Valkey 7.2 | To Valkey 8.1 | To Valkey 9.1 |
+| --- | --- | --- | --- |
+| Redis server 6.0 (format 9) | Supported | Supported | Supported |
+| Redis server 7.2 (format 11) | Supported | Supported | Supported |
+| Redis server 8.4 (format 12) | Rejected | Rejected | Rejected |
+
+The three target columns behave identically: a format the target accepts is
+accepted on every line, and format 12 is refused on every line.
+
+For Redis server 8.4 the rejection is not a configuration problem. A payload
+carrying format version 12 is refused, and `MIGRATE` relays the target's reply
+as:
+
+```text
+ERR Target instance replied with error: ERR DUMP payload version or checksum are wrong
+```
+
+The message names the checksum too, but the version is checked first and on its
+own: an otherwise byte-identical payload whose only difference is the format
+version is accepted at 11 and refused at 12.
+
+- Valkey 7.2 refuses any format version above 11 with no configuration option
+  at all.
+- Valkey 8.1 refuses the foreign range unconditionally when validating a
+  `RESTORE` payload. The `rdb-version-check` parameter does not reach that
+  check, and Valkey 8.1 has no foreign-type guard to fall back on, so relaxing
+  it elsewhere removes a gate without adding a safety net. Do not do it.
+- Valkey 9.1 refuses the foreign range under its default `rdb-version-check`
+  value of `strict`. Setting `rdb-version-check relaxed` lets a version-12
+  payload past the version gate, so keys whose type predates the fork do
+  restore. A hash with field expiration, the data the newer Redis server lines
+  store under those higher type codes, is still refused:
+
+  ```text
+  ERR Target instance replied with error: ERR Bad data format
+  ```
+
+  A setting that admits part of a dataset and refuses the rest is not a
+  migration path. Do not use it to move real data.
+
+`rdb-version-check` is not on the Operator's forbidden or restart-required
+lists, so `spec.customConfigs` will accept it. Accepting it is not the same as
+it producing a correct migration.
+
+Treat Redis server 8.4 as requiring a conversion step outside this product:
+re-create the data through your application. A staging instance does not help.
+Redis server 7.2 and 6.0 refuse a format 12 payload exactly as Valkey does, so
+`MIGRATE` and `RESTORE` cannot bring the data down to format 11.
+
+Only the Alauda Cache Service E1 v5.0 packages include a Redis server 8.4 image;
+it is removed from later versions. Their API still accepts the version, but their
+bundles ship no 8.4 server image, so on those versions an 8.4 instance exists only
+where an image was supplied out of band.
+
+### Choosing the target version \{#target-version}
+
+**The procedure does not depend on which target line you choose.** Nothing in
+any command on this page references the target's version: a copy into a Valkey
+8.1 or 9.1 instance runs exactly as it does into a 7.2 instance, with the same
+commands, the same flags, and the same batching rules. What decides the shape of
+the work is the *source* — its server line decides whether the copy is possible
+at all, and its architecture decides which procedure applies.
+
+So read the matrix by row. Every supported source migrates into all three target
+lines, and Redis server 8.4 migrates into none of them.
+
+Three differences do not change the copy, but they change what is possible
+afterwards, and they are worth weighing before you pick a line:
+
+- **`rdb-version-check` does not exist on Valkey 7.2.** The parameter is present
+  only on 8.1 and 9.1, where it defaults to `strict`; on 7.2 setting it is
+  rejected with `ERR Unknown option or number of arguments for CONFIG SET`. The
+  warnings about relaxing it therefore apply only to the newer two lines.
+- **Valkey 9.1 writes format 80, which nothing older reads.** A payload taken
+  from a 9.1 instance is refused by Valkey 8.1, by Valkey 7.2, and by every Redis
+  server line on this page. Moving data *out* of a 9.1 instance into an older
+  line is not this procedure run backwards — it is not available at all.
+- **The version you choose is a floor.** The validating webhook rejects a
+  downgrade, so a later move up a line is possible and a move back down is not.
+
+Together those make the target line a one-way decision in a way the copy itself
+is not. Choosing a newer line commits you to it; choosing 7.2 leaves the upgrade
+available but is the oldest supported line, so weigh it against the support
+timeline in [Lifecycle policy](../lifecycle_policy.mdx).
+
+## Confirm the dataset has no unsupported content \{#dataset-content}
+
+A compatible format version is necessary, not sufficient. Check the source for
+content that has no counterpart on the target before you schedule the window.
+
+- **Module data.** `spec.modules` renders startup `loadmodule` directives only,
+  and the delivered Valkey images install no module files. Any value created by
+  a module — including the JSON, time-series, probabilistic, and search types
+  that the newer Redis server lines bundle — has no target representation.
+  Migration of module data is not supported.
+- **Active-active replication data.** The Alauda Cache Service E1 active-active
+  capability has no counterpart in this product. Instances that hold
+  conflict-free replicated data types cannot be migrated by key copy.
+- **Hash field expiration.** Present from Redis server 7.4 and from Valkey 9.0,
+  with incompatible encodings. Combined with the matrix above, a source that uses
+  it is only migratable by re-creating the keys and their per-field expirations
+  through your application.
+- **Access control list (ACL) rules, Lua scripts, and stored functions.** These
+  live outside the keyspace and are not carried by any key copy. Re-declare ACL
+  accounts as `User` resources, and reload scripts and functions from your own
+  source of truth.
+- **Key expiration.** Decide explicitly whether to preserve remaining time to
+  live. `MIGRATE` preserves it; a re-creation path generally does not.
+- **Databases other than 0.** A Sentinel source can hold keys in `db1`, `db2`,
+  and so on. Each copy below reads one database, so check `INFO keyspace` and
+  plan for every database it lists: [Enumerate and
+  batch](#sentinel-to-failover) runs once per database, and
+  `valkey-cli --cluster import` reads database 0 only.
+
+Survey the source with `valkey-cli`. Every command on this page uses it,
+including those sent to the source server, so you do not need a second client:
+
+```bash
+valkey-cli -h <source-host> -p <source-port> --user <user> --askpass INFO keyspace
+valkey-cli -h <source-host> -p <source-port> --user <user> --askpass INFO modules
+valkey-cli -h <source-host> -p <source-port> --user <user> --askpass ACL LIST
+valkey-cli -h <source-host> -p <source-port> --user <user> --askpass FUNCTION LIST
+```
+
+`FUNCTION LIST` applies from Redis server 7.0. A 6.0 source answers
+`ERR unknown command`, because that line has no stored functions to migrate.
+
+Never pass a password on the command line for a command you run by hand. Use
+`--askpass`, and on the target side read credentials from the Kubernetes Secret
+referenced by the `User` resource. The copy loops are the one exception; see
+[Credentials in the copy loops](#copy-credentials).
+
+Expect some of those to be refused rather than answered. On a source instance the
+`default` account is restricted, so administrative commands come back as, for
+example:
+
+```text
+NOPERM User default has no permissions to run the 'acl|list' command
+```
+
+Run the survey as an account that holds the permissions, rather than reading a
+`NOPERM` reply as "this instance has no access control list entries". The source
+declares its accounts as `RedisUser` resources, so you can also list them without
+that permission:
+
+```bash
+kubectl -n <source-namespace> get redisuser
+```
+
+## Translate the instance specification \{#translate-spec}
+
+The two products have separate APIs. `Redis` in `middleware.alauda.io` becomes
+`Valkey` in `rds.valkey.buf.red`, and several fields move or change name rather
+than disappearing.
+
+| Alauda Cache Service E1 (`Redis.spec`) | Alauda Cache Service E2 (`Valkey.spec`) | Note |
+| --- | --- | --- |
+| `version` | `version` | `7.2` is valid on both APIs but selects a different server on each. A migration is always a server change. |
+| `arch: sentinel` | `arch: failover` | Rename only; both are primary-replica monitored by Sentinel. |
+| `arch: cluster` | `arch: cluster` | Unchanged. |
+| `arch: standalone` | `arch: replica` | Out of scope on this page. |
+| `replicas` | `replicas` | `replicas.cluster.shard` becomes `shards`. The source's `slave` fields count replicas in addition to the primary, while `replicasOfShard` counts every member, so add one: `slave: 1` becomes `replicasOfShard: 2`. |
+| `resources` | `resources` | Keep requests and limits equal; the validating webhook warns when they differ. |
+| `persistent`, `persistentSize` | `storage` | `capacity` and `storageClassName`. `accessMode` is accepted but ignored: the builders always request `ReadWriteOnce`. |
+| `passwordSecret` | — | No credential field on `Valkey`. Accounts are declared as separate `User` resources with `passwordSecrets`. |
+| `customConfig` | `customConfigs` | Plural on the target. |
+| `sentinelCustomConfig` | `sentinel.customConfigs` | Moves inside the `sentinel` block. |
+| `expose` | `access` | Not the same shape. `expose.type` becomes `access.serviceType` and `annotations` carries across. `enableNodePort`, `accessPort`, `dataStorageNodePortSequence`, and `dataStorageNodePortMap` have no working counterpart. |
+| `enableTLS`, `certificate` | `access.enableTLS`, `access.certIssuer`, `access.certIssuerType` | Moved inside `access`. |
+| `ipFamilyPrefer` | `access.ipFamilyPrefer` | Moved inside `access`. |
+| `affinity` | `customAffinity` | Renamed. Review [Current limitations](../limitations.mdx) before relying on it for Cluster. |
+| `affinityPolicy` | `affinityPolicy` | Same field name, but `AntiAffinityInSharding` becomes `AntiAffinityInShard`; the source's spelling is rejected. Check the implemented behavior. |
+| `nodeSelector`, `tolerations`, `securityContext`, `podAnnotations` | Same names | Carry across unchanged. |
+| `exporter` | `exporter` | The switch is inverted: `enabled` on the source, `disable` on the target, where the exporter is on unless disabled. |
+| `pause` | — | Use the pause annotation in `spec.podAnnotations`. |
+| `modules` | `modules` | Renders `loadmodule` only; the standard images supply no module. |
+| `backup`, `restore` | — | Not implemented in this product. |
+| `enableActiveRedis`, `serviceID`, `activeRedis` | — | No counterpart. |
+| `redisProxy` | — | No counterpart. |
+| `upgradeOption`, `patches` | — | No counterpart. |
+
+Leave `spec.access.ports` unset. The generated schema and the runtime parser
+disagree on its format in this release, so every schema-valid value fails
+admission when `serviceType` is `NodePort`.
+
+### Target manifest: Sentinel becomes Failover \{#target-failover}
+
+```yaml
+apiVersion: rds.valkey.buf.red/v1alpha1
+kind: Valkey
+metadata:
+  name: valkey-failover
+  namespace: default
+spec:
+  version: "8.1"
+  arch: failover
+  replicas:
+    replicasOfShard: 3
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  storage:
+    capacity: 8Gi
+    storageClassName: <storage-class>
+  access:
+    serviceType: ClusterIP
+```
+
+### Target manifest: Cluster becomes Cluster \{#target-cluster}
+
+```yaml
+apiVersion: rds.valkey.buf.red/v1alpha1
+kind: Valkey
+metadata:
+  name: valkey-cluster
+  namespace: default
+spec:
+  version: "8.1"
+  arch: cluster
+  replicas:
+    shards: 3
+    replicasOfShard: 2
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  storage:
+    capacity: 8Gi
+    storageClassName: <storage-class>
+  access:
+    serviceType: ClusterIP
+```
+
+Size the target for the source dataset plus headroom before you copy. The
+Operator does not check that the target can hold the source.
+
+## Create and verify the target instance \{#create-target}
+
+```bash
+kubectl -n default apply -f valkey-cluster.yaml
+kubectl -n default get valkey valkey-cluster -w
+```
+
+Wait for `status.phase` to report `Ready`, then confirm the topology before
+copying anything. For Cluster, confirm that all 16,384 slots are assigned:
+
+```bash
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER INFO
+kubectl -n default exec <ready-cluster-pod> -c valkey -- \
+  valkey-cli CLUSTER SHARDS
+```
+
+Create the ACL accounts your application needs, as `User` resources with their
+password Secrets, and verify that a client can authenticate against the target
+before the window opens. See [Manage users](../functions/20-user.mdx).
+
+## Copy the data \{#copy-data}
+
+### There is no incremental sync \{#no-incremental-sync}
+
+Read this before planning the window. The product offers a **one-shot copy and
+nothing else**. There is no incremental catch-up, no change stream, and no way to
+let the target track the source while clients keep writing, because the
+replication-based route is closed (see [the Operator
+boundary](#operator-boundary)).
+
+The consequence is direct: **the write outage lasts as long as the whole copy**,
+not as long as a final delta. Stop writes to the source before the first key
+moves and keep them stopped until clients are re-pointed. Nothing on this page
+detects or reconciles a write that lands on the source after its keys have been
+copied — such a write is silently lost.
+
+So size the window from the dataset. As one measured data point, copying 20,000
+small string keys into a three-shard Cluster target on an idle cluster took 38
+seconds, about 500 keys per second. That rate is specific to that dataset, value
+size, and cluster; treat it only as an order of magnitude, and **measure your own
+rate on a representative sample** before committing to a window. Large values,
+large collections, and network distance all move it substantially.
+
+If the resulting window is unacceptable, the migration has to be driven from the
+application — for example by writing to both systems for a period, or by
+replaying from your own source of truth. Neither is something this product
+implements or can verify for you.
+
+### `MIGRATE` deletes from the source unless you say otherwise \{#migrate-copy}
+
+`MIGRATE` **moves** a key: on success it deletes the key from the source. Run the
+procedure below without `COPY` and the source is drained key by key as the copy
+proceeds, which destroys the rollback that [Cut over and roll
+back](#cutover) depends on.
+
+Always pass `COPY` — the source keeps every key — and add `REPLACE` so a retry
+after a partial run is idempotent rather than failing on keys that already
+arrived. `valkey-cli --cluster import` has the same default and the same pair of
+flags, spelled `--cluster-copy` and `--cluster-replace`.
+
+### Direction of the connection \{#copy-direction}
+
+Every procedure below is driven by `MIGRATE`, and `MIGRATE` is executed **by the
+source server**, which opens its own connection to the target and issues a
+`RESTORE` there. The network requirement therefore runs in that direction: the
+source server must be able to resolve and reach the target's address, not merely
+the workstation you type the commands on.
+
+In practice that means running the source inside the same Kubernetes cluster for
+the duration of the migration, or exposing the target on an address the source
+can reach — `access.serviceType: NodePort` or `LoadBalancer` — and reverting the
+access method afterwards. Run the commands themselves from a Pod that can reach
+both ends.
+
+### Credentials in the copy loops \{#copy-credentials}
+
+The loops below start a new `valkey-cli` for every call, so `--askpass` would stop
+and prompt each time, and a slot walk makes at least 16,384 calls. Read each
+password once in the client Pod instead, in a shell started with
+`kubectl exec -it` so that a terminal is allocated, and let two small helpers
+pass it through `REDISCLI_AUTH`. That is the variable every delivered `valkey-cli`
+reads; the 7.2 and 8.1 clients ignore `VALKEYCLI_AUTH`.
+
+```bash
+SRC_USER=<source-user>
+DST_USER=<target-user>
+
+stty -echo
+printf 'Source password: '; read -r SRC_PASS; echo
+printf 'Target password: '; read -r DST_PASS; echo
+stty echo
+
+src() { REDISCLI_AUTH="$SRC_PASS" valkey-cli --user "$SRC_USER" "$@"; }
+dst() { REDISCLI_AUTH="$DST_PASS" valkey-cli --user "$DST_USER" "$@"; }
+```
+
+This is a deliberate exception to reading passwords interactively, for these
+loops only. Unset both variables, or close the shell, when the copy finishes.
+
+`MIGRATE` carries the target credential as a command argument, because the source
+server has to log in to the target itself. Redis server 7.2 redacts it, but
+Redis server 6.0 shows it in clear text in `MONITOR` and `SLOWLOG` output. In this
+release the target's `default` account has no password, so you can leave out
+`AUTH2 "$DST_USER" "$DST_PASS"` while you copy with that account. If you use a
+custom account from a 6.0 source, [rotate its
+password](../functions/20-user.mdx) when the copy is done.
+
+### Choose the procedure \{#choose-procedure}
+
+Four combinations, and the deciding factor is **whether the source runs in
+cluster mode**, not which target you chose:
+
+| Source | Target | Procedure |
+| --- | --- | --- |
+| Sentinel | Failover | [Enumerate and batch](#sentinel-to-failover) |
+| Sentinel | Cluster | [`valkey-cli --cluster import`](#sentinel-to-cluster) |
+| Cluster | Failover | [Walk the slots](#cluster-source) |
+| Cluster | Cluster | [Walk the slots](#cluster-source) |
+
+A Cluster source constrains every copy out of it. The multi-key form
+`MIGRATE … KEYS k1 k2 …` is a multi-key command, so on a cluster node it is
+subject to the cross-slot rule and fails when the batch spans slots:
+
+```text
+CROSSSLOT Keys in request don't hash to the same slot
+```
+
+Enumerating with `SCAN` and batching by convenience therefore does not work from
+a Cluster source, whatever the target is. The slot has to be the unit of work.
+
+### Sentinel source into a Failover target \{#sentinel-to-failover}
+
+`MIGRATE` performs the serialization and the insert in one command and preserves
+each key's remaining time to live. The source is a single logical server, so
+batches can be formed freely.
+
+Run this once for each database that `INFO keyspace` lists, setting `DB` each
+time. The `src` helper comes from [Credentials in the copy
+loops](#copy-credentials).
+
+```bash
+SRC=<source-host>                       # the primary of the source instance
+DST=rfr-<name>-readwrite.<namespace>    # the Valkey read-write Service
+DB=0                                    # a db<N> line from INFO keyspace
+BATCH=50
+
+# 1. Enumerate. SCAN does not block the server the way KEYS would.
+src -h "$SRC" -p 6379 -n "$DB" --scan --count 1000 > "keys.$DB.txt"
+
+# 2. Copy in batches. COPY keeps the source intact; REPLACE makes a retry
+#    idempotent. Every batch is checked — a silent failure here loses data.
+rm -f batch_*
+split -l "$BATCH" "keys.$DB.txt" batch_
+for f in batch_*; do
+  set --
+  while IFS= read -r key; do set -- "$@" "$key"; done < "$f"
+  out=$(src -h "$SRC" -p 6379 -n "$DB" \
+        MIGRATE "$DST" 6379 "" "$DB" 5000 COPY REPLACE \
+        AUTH2 "$DST_USER" "$DST_PASS" KEYS "$@")
+  case "$out" in
+    OK|NOKEY) ;;
+    *) echo "FAILED batch $f: $out" >&2 ;;
+  esac
+done
+```
+
+The inner loop passes each key as one argument on purpose. A key containing a
+space would otherwise split into words that name no key, and `MIGRATE` answers
+those with `NOKEY` rather than an error, so the key would be skipped with nothing
+reported. A key containing a newline still breaks the one-key-per-line file, so
+treat [the key-count comparison](#verify) as mandatory.
+
+`NOKEY` is normal: it means every key in that batch had already expired or been
+removed between the enumeration and the move. Any other reply is a failure for
+the whole batch, and the loop above prints it rather than continuing silently.
+Re-run a failed batch after fixing the cause; `REPLACE` makes that safe.
+
+Keep each `keys.<db>.txt` — it is the record of what the migration was supposed
+to move, and the input to the verification step.
+
+### Sentinel source into a Cluster target \{#sentinel-to-cluster}
+
+A Cluster target routes by hash slot, so each key has to reach the node that
+owns its slot. For a source that is **not** in cluster mode, the cluster manager
+built into `valkey-cli` does that for you: it reads the source with `SCAN`,
+resolves the owning node per key, and issues `MIGRATE`.
+
+```bash
+valkey-cli --cluster import <target-node-host>:6379 \
+  --cluster-from <source-host>:<source-port> \
+  --cluster-from-user <source-user> \
+  --cluster-from-askpass \
+  --cluster-copy --cluster-replace \
+  --user <target-user> --askpass
+```
+
+It prompts for the target password first, then the source password.
+
+`--cluster-copy` is what keeps the source intact; without it the import drains
+the source exactly as a bare `MIGRATE` does. `--cluster-replace` makes a re-run
+after a partial import idempotent. It reports each key as it goes, so the output
+is the per-key record of the run.
+
+Two constraints come from the implementation: it imports **database 0 only**, and
+it refuses a source that has `cluster_enabled` set, reporting:
+
+```text
+[ERR] The source node should not be a cluster node.
+```
+
+### Cluster source into either target \{#cluster-source}
+
+Because of the cross-slot rule above, `--cluster import` is unavailable and
+free-form batching is unavailable. Walk the slots instead: ask each source
+primary how many keys a slot holds, read them, and move them in single-slot
+`MIGRATE` batches. This is the same shape for both targets — only the destination
+differs. Leave `FIXED_DST` empty for a Cluster target, and set it for a Failover
+target. The `src` and `dst` helpers come from [Credentials in the copy
+loops](#copy-credentials).
+
+```bash
+SRC_SEED=<source-host>   # any source primary
+DST_SEED=<target-host>   # any target primary; unused when FIXED_DST is set
+FIXED_DST=               # Failover target: rfr-<name>-readwrite.<namespace>:6379
+BATCH=100
+
+# Print "address first-slot last-slot" for each primary in CLUSTER NODES.
+slot_map() {
+  awk '$3 ~ /master/ {
+    a = $2; sub(/@.*/, "", a)
+    for (i = 9; i <= NF; i++) {
+      if ($i ~ /^[0-9]+$/)             print a, $i, $i
+      else if ($i ~ /^[0-9]+-[0-9]+$/) { split($i, r, "-"); print a, r[1], r[2] }
+    } }'
+}
+
+# Copy the $n keys of $slot from $host:$port, in batches of $BATCH.
+copy_slot() {
+  target=${FIXED_DST:-$(awk -v s="$slot" '$2 <= s && s <= $3 { print $1; exit }' dstmap.txt)}
+  src -h "$host" -p "$port" CLUSTER GETKEYSINSLOT "$slot" "$n" > slot.txt
+  rm -f part_*
+  split -l "$BATCH" slot.txt part_
+  for f in part_*; do
+    set --
+    while IFS= read -r key; do set -- "$@" "$key"; done < "$f"
+    out=$(src -h "$host" -p "$port" \
+          MIGRATE "${target%:*}" "${target##*:}" "" 0 5000 COPY REPLACE \
+          AUTH2 "$DST_USER" "$DST_PASS" KEYS "$@")
+    case "$out" in
+      OK|NOKEY) ;;
+      *) echo "FAILED slot $slot ($f): $out" >&2 ;;
+    esac
+  done
+}
+
+src -h "$SRC_SEED" -p 6379 CLUSTER NODES | slot_map > srcmap.txt
+[ -n "$FIXED_DST" ] || dst -h "$DST_SEED" -p 6379 CLUSTER NODES | slot_map > dstmap.txt
+[ -s srcmap.txt ] || echo "FAILED: no source primaries found" >&2
+
+while read -r addr lo hi; do
+  host=${addr%:*}; port=${addr##*:}
+  slot=$lo
+  while [ "$slot" -le "$hi" ]; do
+    n=$(src -h "$host" -p "$port" CLUSTER COUNTKEYSINSLOT "$slot")
+    case "$n" in
+      0) ;;
+      ''|*[!0-9]*) echo "FAILED slot $slot: $n" >&2 ;;
+      *) copy_slot ;;
+    esac
+    slot=$((slot + 1))
+  done
+done < srcmap.txt
+```
+
+Every batch is single-slot by construction, so the cross-slot rule is satisfied
+and — for a Cluster target — the destination is always the node that owns the
+slot, so no redirection is needed.
+
+`COUNTKEYSINSLOT` sizes the read on purpose. `GETKEYSINSLOT` always returns the
+first keys of a slot and `COPY` leaves those keys in place, so repeating a smaller
+read returns the same keys forever and never reaches the rest of the slot.
+
+Two practical notes:
+
+- **Hash tags survive.** Keys sharing a tag hash to one slot on both sides, so
+  they move together and stay together. Keys that merely happened to share a
+  shard on the source do not.
+- **Cost is dominated by the slot walk, not the data.** The loop probes all
+  16,384 slots and starts a new `valkey-cli` for every call, so the client's CPU
+  sets the pace. A 3,152-key dataset took about 130 seconds from a client Pod
+  limited to 1 CPU, and about nine minutes from one limited to 200m. A migration
+  client that holds one connection per source primary and pipelines the calls is
+  dramatically faster; budget accordingly and measure your own.
+
+## Re-point clients \{#repoint-clients}
+
+Generated resource names differ between the two products, so client
+configuration does not carry across unchanged.
+
+| Endpoint | Alauda Cache Service E1 | Alauda Cache Service E2 |
+| --- | --- | --- |
+| Read-write Service (Sentinel / Failover) | `rfr-<name>-read-write` | `rfr-<name>-readwrite` |
+| Read-only Service (Sentinel / Failover) | `rfr-<name>-read-only` | `rfr-<name>-readonly` |
+| Sentinel Service | `rfs-<name>` | `rfs-<name>` |
+| Sentinel monitor name | `mymaster` | `mymaster` |
+| Cluster bootstrap Service | `<name>` | `<name>` |
+| Cluster per-node Service | `drc-<name>-<shard>-<member>` | `drc-<name>-<shard>-<member>` |
+
+The read-write and read-only Service names differ only by hyphenation. That is
+easy to miss in a values file or a NetworkPolicy and produces a name-resolution
+failure at cutover rather than a clear error. Discover the Services by label
+rather than constructing the names in automation:
+
+```bash
+kubectl -n default get service -l buf.red/name=valkey-failover
+```
+
+The Sentinel monitor name is `mymaster` on both products, so that client setting
+does not change.
+
+Two further client-visible differences:
+
+- Clients must use a Cluster-aware connection (`valkey-cli -c`, or a client
+  library that follows `MOVED` and `ASK`) against a Cluster instance, exactly as
+  they do against a Cluster instance of Alauda Cache Service E1.
+- If the target has `access.enableTLS` set, Valkey requires a trusted client
+  certificate by default, because the generated server arguments do not disable
+  TLS client authentication. Clients need the certificate authority (CA) plus a
+  client certificate and key. Review the TLS boundary in
+  [Current limitations](../limitations.mdx) before exposing a migrated instance.
+
+## Verify \{#verify}
+
+Compare the two keyspaces before releasing the window, one `db<N>` line at a
+time. Commands that use `--askpass` through `kubectl exec` need `-it`; without a
+terminal the prompt reads nothing and the command fails with `NOAUTH`.
+
+```bash
+valkey-cli -h <source-host> -p <source-port> --user <user> --askpass INFO keyspace
+kubectl -n default exec -it <ready-pod> -c valkey -- valkey-cli --user <user> --askpass INFO keyspace
+```
+
+For a Cluster target, every keyspace command is answered by the **one node that
+served it**, so a single `DBSIZE` reports one shard, not the instance. List the
+shards, then sum across them. Read the primary of each shard from the output: it
+is not always the Pod with ordinal 0.
+
+```bash
+kubectl -n default exec -it <ready-cluster-pod> -c valkey -- \
+  valkey-cli --user <user> --askpass CLUSTER SHARDS
+
+# then, per primary Pod
+kubectl -n default exec -it <primary-pod> -c valkey -- \
+  valkey-cli --user <user> --askpass DBSIZE
+```
+
+The same trap applies to clearing a target before a retry: `FLUSHALL` sent to the
+bootstrap Service empties only the node that received it and leaves the other
+shards populated, so the next run starts against a partially filled target. Send
+it to each primary Pod, and re-check the per-shard counts afterwards.
+
+Then sample individual keys — a matching key count is not proof that values,
+types, and remaining time to live survived:
+
+```bash
+kubectl -n default exec -it <ready-pod> -c valkey -- \
+  valkey-cli --user <user> --askpass TYPE <key>
+kubectl -n default exec -it <ready-pod> -c valkey -- \
+  valkey-cli --user <user> --askpass TTL <key>
+```
+
+Confirm on the application side as well: run the read paths that matter against
+the target before the write paths are switched over.
+
+Note that the replication credential is not spelled the same on every supported
+line. `CONFIG GET primaryauth` returns an empty result on 7.2, where the
+directive is `masterauth`; 8.1 and 9.1 use `primaryauth` and keep `masterauth`
+as an alias. On the delivered images, `CONFIG GET` reports a set credential as a
+fixed redaction placeholder rather than the value.
+
+## Cut over and roll back \{#cutover}
+
+The product provides no rollback for a migration. Build the rollback from the
+source instead:
+
+1. Keep the source instance running and intact, with writes stopped, until the
+   target has been verified under real traffic. This is why every `MIGRATE` in
+   this guide carries `COPY`: without it the copy deletes each key from the
+   source as it goes, and by the end there is nothing left to roll back to.
+2. Switch clients to the target.
+3. Retire the source only after the verification window closes.
+
+Because the outage spans the whole copy rather than a final delta, decide the
+abort criterion in advance: how long the copy may run before you stop it,
+re-point clients back at the untouched source, and try again later.
+
+Deleting a `Valkey` instance always leaves its persistent volume claims (PVCs)
+behind in this release, so a failed target does not free its storage
+automatically. List and remove the leftover claims explicitly once the data on
+them is confirmed disposable.
+
+## Migrations this product does not support \{#unsupported}
+
+- Redis server 8.4 to any supported Valkey line, by any key-copy mechanism.
+- Any dataset containing module-created values.
+- Active-active or conflict-free replicated data.
+- Replication-based import from an external primary.
+- File-level import of a source dump into a managed instance.
+- Keys in databases other than 0 into a Cluster target.
+- Incremental or continuous synchronization of any kind. The copy is one-shot,
+  so the write outage covers the whole dataset.
+- Migration of ACL definitions, Lua scripts, or stored functions as part of a
+  key copy.
+
+## Trademarks \{#trademarks}
+
+Redis® is a registered trademark of Redis Ltd. Any rights therein are reserved to Redis Ltd. Any use by Alauda is for referential purposes only and does not indicate any sponsorship, endorsement or affiliation between Redis Ltd. and Alauda.
+
+Alauda is an independent vendor. This product is not affiliated with, endorsed by, or sponsored by Redis Ltd. All trademarks are the property of their respective owners and are used here for identification purposes only.

@@ -118,6 +118,54 @@ base-image bump and no server change; it still builds 7.2.14, 8.1.9, and 9.1.1.
   backup/restore controller, cross-cluster replication or failover implementation,
   disaster-recovery API, integrated large-key inspection, parameter-template API,
   or Web Console. Do not migrate those Redis guides.
+- Migration from Alauda Cache Service E1 is not an Operator capability, and the
+  migration boundary is set by the on-disk serialization format rather than by the
+  Operator. The
+  Operator supplies no import controller, no restore workflow, and no external
+  primary field; `replicaof`, `slaveof`, `dir`, and `dbfilename` are all on the
+  `internal/builder/config.go` forbidden list, which removes both the
+  replication-based and the file-based import routes. The format boundary is
+  upstream: Valkey 8.1.9 and 9.1.1 reserve RDB format versions 12–79
+  (`RDB_FOREIGN_VERSION_MIN`/`MAX`, `src/rdb.h`) and payload type codes 22–243
+  (`RDB_FOREIGN_TYPE_MIN`/`MAX`) as foreign and refuse them. Redis 6.0.20 writes
+  format 9 and Redis 7.2.16 writes format 11, both accepted; Redis 8.4.6 writes
+  format 12 and is refused on every supported line. Redis numbers its hash
+  field-expiration types 22–25 (added in 7.4) while Valkey numbers its own
+  `RDB_TYPE_HASH_2` 22 (added in 9.0), so the same code denotes incompatible
+  encodings — that collision is the reason for the reserved ranges. Valkey 7.2.14
+  has no foreign concept and simply refuses any version above 11. The
+  `rdb-version-check` parameter (default `strict` on 8.1 and 9.1, absent on 7.2)
+  does not lift the boundary: on 8.1 the foreign-range rejection in
+  `verifyDumpPayload` is not gated on it, and on 9.1 relaxing it only moves the
+  rejection to the foreign-type guard. It is not on the Operator's forbidden or
+  restart-required lists, so `spec.customConfigs` accepts it; documentation must
+  say that accepting it does not make the migration work. With it relaxed on 9.1,
+  a real Redis server 8.4 hash with field expiration (type code 24 or 25) is refused
+  with `ERR Bad data format`; `ERR Unsupported foreign data type: 22` appears only
+  for a crafted type 22, which 8.4 does not write. Redis server 7.2 and 6.0 refuse
+  a format 12 payload too, so no staging instance converts one.
+- Redis server 8.4 is not on every Alauda Cache Service E1 line. `redis-operator`
+  tags `v5.0.0` through `v5.0.3` carry `redis-v84` in `values.yaml`; `v5.1.0` and
+  later do not, and `api/middleware/v1/redis_types.go:64-71` keeps the version
+  API-accepted while shipping no image. The current support matrix in `redis-docs`
+  `docs/en/release_notes.mdx` lists 8.4 on no line. The product owner confirmed on
+  2026-11-05 that the product is built on Redis OSS, 7.2 and earlier, and that 8.4
+  is removed from the versions that follow v5.0, so the migration guide treats 8.4
+  as a blocked case rather than an in-scope source.
+- The `default` account's rule differs between source and runtime. At `v2.0.0`,
+  `pkg/types/user/user.go` `NewUser` models it with `acl`, `flushall`, `flushdb`,
+  and `keys` disallowed. On instances installed from `valkey-operator.v2.0.0` on
+  2026-11-05, Cluster and Failover both report
+  `user default on nopass sanitize-payload ~* &* +@all`, and `FLUSHALL`, `KEYS`, and
+  `ACL LIST` all succeed without a password. No `User` resource exists for
+  `default`; only `operator` has one. Runtime is authoritative for behavior, so
+  `docs/en/functions/20-user.mdx` documents the runtime rule. The code is unchanged,
+  so re-check this entry if the Operator starts applying the modeled rule.
+- The two products' APIs are not field-for-field copies: `expose.type` is
+  `access.serviceType` and the NodePort fields have no working counterpart;
+  `exporter.enabled` is inverted into `exporter.disable`; `AntiAffinityInSharding`
+  is `AntiAffinityInShard`; and the source's `slave` counts replicas where
+  `replicasOfShard` counts members.
 - The shipped ServiceMonitor selects the operator metrics Service, not Valkey
   data-plane Services. The exporter is implemented, but data-plane scrape
   integration is environment-specific.
