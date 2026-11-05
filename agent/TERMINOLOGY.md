@@ -28,6 +28,11 @@ i18n:
 | rolling restart | — | Sequential Pod replacement triggered by configuration, version, template, or restart annotation changes. |
 | Cluster-aware client | `valkey-cli -c` | Client that discovers Cluster topology and follows `MOVED` and `ASK` redirections. |
 | server line | `spec.version` | Supported Valkey major/minor line packaged by the product, such as 8.1; not the exact container patch build. |
+| RDB format | `RDB_VERSION`, `RDB_TYPE_*` | The serialization format of `DUMP`, `RESTORE`, and `MIGRATE` payloads. Expand it as “Redis Database (RDB)” at first use, but only on a page that carries the Redis notice, because the expansion uses the mark. |
+| snapshot (RDB) | — | The same format on a page that stays free of the Redis mark, such as `limitations.mdx`. Do not expand it there. |
+| foreign range | `RDB_FOREIGN_VERSION_MIN`/`MAX`, `RDB_FOREIGN_TYPE_MIN`/`MAX` | Format versions 12–79 and payload type codes 22–243, which Valkey reserves and refuses. The word follows Valkey's own source constants. |
+| hash field expiration | — | A time to live on an individual hash field. Redis server 7.4 and Valkey 9.0 each added it with incompatible encodings. Do not use it for key expiration. |
+| migrate | `MIGRATE` | The verb for moving data from Alauda Cache Service E1 onto this product. Do not use “port”. The `MIGRATE` command moves a key unless given `COPY`, so keep the command in a code span and do not read the verb as that command. |
 | operator-owned resource | — | Child resource generated and reconciled from `Valkey`; users inspect it but change the owning high-level resource. |
 | large key | `valkey-cli --bigkeys` | Key whose size or collection cardinality creates workload-specific operational risk. Do not imply one universal size threshold. |
 | Web Console | — | Unsupported for this product; do not provide UI instructions. |
