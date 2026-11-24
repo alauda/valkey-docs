@@ -52,7 +52,17 @@ repositories:
   2028-09-30. Lifecycle dates are the release date plus one and two years,
   rounded to the end of that month, following the Alauda Cache Service E1
   convention;
-- supported platform versions Alauda Container Platform v4.2, v4.3, and v4.4;
+- supported platform versions Alauda Container Platform v4.2, v4.3, v4.4, and
+  v4.5. The product owner added v4.5 on 2026-11-24 after a compatibility test of
+  the published 2.0.0 package on fresh Alauda Container Platform 4.5.0
+  installations: the full 410-case e2e suite passed case for case against the
+  2.0.0 baselines on an arm64 workload cluster with TopoLVM storage and on a
+  self-built amd64 cluster with TopoLVM storage. On a third, amd64 MicroOS
+  cluster with rook-ceph storage, 36 Valkey 7.2 Cluster cases stayed unverified:
+  the 5-shard scale-out exceeded its 30-minute spec timeout in both access
+  modes, and the ordered cases after it were skipped. The same 36 cases passed
+  on the other two clusters. Testing stopped there by the product owner's
+  decision;
 - 2.0.0 has no predecessor product version. The documentation covers the 2.x
   line only: `valkey-operator` `release-1.0`, `release-1.1`, `v1.0.0`, and
   `v1.1.0` are out of scope, no 1.x row belongs in the lifecycle timeline, and no
