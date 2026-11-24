@@ -31,9 +31,9 @@ base-image bump and no server change; it still builds 7.2.14, 8.1.9, and 9.1.1.
   still carries the superseded notice until that change is cherry-picked.
 - The current product release is `2.0.0`: `version:1`, shipped as
   `valkey-operator` tag `v2.0.0`. It was released on 2026-09-08 and runs on
-  Alauda Container Platform v4.2, v4.3, and v4.4. Release date, lifecycle dates,
-  and platform versions are product-owner requirements with no source-code
-  evidence; see `SOURCE_POLICY.md`.
+  Alauda Container Platform v4.2, v4.3, v4.4, and v4.5 (v4.5 added 2026-11-24).
+  Release date, lifecycle dates, and platform versions are product-owner
+  requirements with no source-code evidence; see `SOURCE_POLICY.md`.
 - The Operator image map selects Valkey server lines `7.2`, `8.1`, and `9.1`:
   `values.yaml:17-34`. These are the only supported versions in product docs.
   The pinned container source builds patch versions 7.2.14, 8.1.9, and 9.1.1.

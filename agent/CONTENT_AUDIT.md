@@ -18,8 +18,8 @@ official command source as the surrounding section.
   CLI-only operation, supported server lines 7.2/8.1/9.1, and no disaster
   recovery. For the 2.0.0 release: release date 2026-09-08, a two-year lifecycle
   ending full support on 2027-09-30 and maintenance on 2028-09-30, and support on
-  Alauda Container Platform v4.2, v4.3, and v4.4, and no predecessor product
-  version — the 2.x line only. These release facts are supplied by the product
+  Alauda Container Platform v4.2, v4.3, v4.4, and v4.5, and no predecessor
+  product version — the 2.x line only. These release facts are supplied by the product
   owner and have no source-code evidence; `SOURCE_POLICY.md` records them.
 - **O — Operator implementation:** `valkey-operator` `origin/master` commit
   `20b3b6758fe6f5431e0e183e841d606b935c0853`, plus the code-free
@@ -71,7 +71,7 @@ protocol semantics come from the official Valkey documentation.
 | `installation.mdx` — prerequisites and defaults | P: supported Alauda Container Platform versions. O: Helm values/templates, CRDs, role-based access control, webhook, cert-manager, labels, and metrics Service. Registry, namespace, channel, and approval strategy remain distribution-specific and explicitly unknown. |
 | `upgrade.mdx` — scope and platform compatibility | P: no predecessor product version, supported Alauda Container Platform versions, and the v4.1 exclusion. The product source-to-target upgrade path for later 2.0.x releases remains delegated to release metadata. |
 | `upgrade.mdx` — product upgrade | O: chart resources and API ownership; D from compatibility risk. Package commands and rollback contract are explicitly delegated to release metadata. |
-| `lifecycle_policy.mdx` — timeline, compatibility, and support phases | P: release date 2026-09-08, end of full support 2027-09-30, end of maintenance 2028-09-30, and Alauda Container Platform v4.2/v4.3/v4.4. The phase, release, and maintenance wording follows the Alauda Cache Service E1 policy adapted to Valkey. |
+| `lifecycle_policy.mdx` — timeline, compatibility, and support phases | P: release date 2026-09-08, end of full support 2027-09-30, end of maintenance 2028-09-30, and Alauda Container Platform v4.2/v4.3/v4.4/v4.5. The phase, release, and maintenance wording follows the Alauda Cache Service E1 policy adapted to Valkey. |
 | `lifecycle_policy.mdx` — version dimensions | P, O `version`/`values.yaml`, O status assignment, and I exact Dockerfile versions. |
 | `limitations.mdx` — unsupported and conflicting features | P plus repository-absence checks and each conflict in the release-level table above. |
 | `release_notes.mdx` — compatibility and support matrix | P: release date and supported Alauda Container Platform versions; O: supported server lines. |
