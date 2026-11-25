@@ -208,11 +208,11 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/installation.mdx": {
-      "sha256": "d3011be8d1912e8dd32b3b06aa5d45f30e3a2636bedd5bcd1645b0a1351fbb23",
-      "size": 5004,
+      "sha256": "9f6373012eb76d9065b99171a3343c356ecc818169b2c98c72f3e05238762b6b",
+      "size": 5021,
       "description": "Installation guide for the Alauda Cache Service E2 version 2.0.0 product package using the CLI workflow supplied for the target Alauda Container Platform environment. Lists prerequisites including Alauda Container Platform v4.2, v4.3, or v4.4, cluster permissions for custom resource definitions and admission webhooks, image access, a StorageClass, cert-manager, and a Prometheus-compatible scraper, and notes that the registry, namespace, channel, and approval strategy come from the delivered release package. Provides preflight commands for connectivity, permissions, and storage, then verification steps confirming that the five custom resource definitions are established, that the installed schema admits the supported 7.2, 8.1, and 9.1 version enum, that the Operator Deployment is available, and that webhooks and their certificates exist.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-09-08T06:15:12Z"
+      "updated_at": "2026-11-23T19:04:18Z"
     },
     "docs/en/intro.mdx": {
       "sha256": "20b346cf29f9465d9b4614cd75ad1eb16d5c489c65463a07bc54a5187eed056d",
