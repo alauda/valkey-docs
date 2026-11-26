@@ -166,11 +166,11 @@
       "updated_at": "2026-08-12T07:09:47Z"
     },
     "docs/en/how_to/40-cluster-slots-distribution.mdx": {
-      "sha256": "ea8bb2f2cca65b05a2cb294597644e49eaf414a6fd23d0d42600d0f957eb0acd",
-      "size": 3142,
+      "sha256": "27dae55586b6722b0e02736b81eb47d185ba1745c39fb9e140a352fa753ded10",
+      "size": 3139,
       "description": "Procedure for supplying an explicit initial hash-slot plan for a new Cluster through `spec.replicas.shardsConfig`, which the controller consumes only while the child resource has no initialized shard status, making it creation-only rather than a redistribution API. Lists the constraints: Cluster architecture only, one entry per shard, at least three entries, slot values from 0 through 16383 as individual values or inclusive ranges, and a union covering every slot exactly once. Provides a complete three-shard manifest, explains why a server-side dry run validates the plan only before first creation, and shows verification with `CLUSTER SHARDS` and `CLUSTER INFO`.",
       "generation_method": "ai_agent_reading",
-      "updated_at": "2026-08-12T07:09:47Z"
+      "updated_at": "2026-11-26T18:28:04Z"
     },
     "docs/en/how_to/access/10-failover.mdx": {
       "sha256": "fa9142bfc80dcb4b5daa731fb09d4498864634c1ca69b1599f291502b18a70a4",
