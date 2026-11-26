@@ -89,7 +89,7 @@ kubectl -n default exec <ready-cluster-pod> -c valkey -- \
 
 Do not edit the operator-owned child `Cluster.status.shards` to repair a plan.
 For a rejected create, correct the manifest and apply it again. For an already
-initialized Cluster with an incorrect business layout, plan a supported shard
+initialized Cluster with an incorrect shard layout, plan a supported shard
 scaling operation or create a replacement instance and migrate data.
 
 `CLUSTER SHARDS` is the preferred topology view for these supported server
